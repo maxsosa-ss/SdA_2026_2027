@@ -34,5 +34,4 @@ def amb_rubros_subrubros(df)-> pd.DataFrame:
     df["Rubro PPTO"] = df["Rubro GE"].map(dict_rubros)
     mask_na = df["Subrubro PPTO"].isna()
     df.loc[mask_na, "Subrubro PPTO"] = df.loc[mask_na, "Rubro PPTO"].map(dict_subrubro_na)
-    print("Mapeo de rubros y subrubros aplicado correctamente.")
-    return  df
+    return df

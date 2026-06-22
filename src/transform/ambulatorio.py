@@ -2,6 +2,21 @@ import numpy as np
 import pandas as pd
 
 from src.utils.dates import fecha_hoy, p_actual
+from src.utils.mapping import amb_rubros_subrubros
+
+
+def preparar(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df.rename(columns={
+        'Rubro Prestacion Gerencia Estrategica':    'Rubro GE',
+        'Subrubro Prestacion Gerencia Estrategica': 'Subrubro GE',
+        'Zona Direccion Comercial Asociado':        'Zona DCA',
+        'Subzona Direccion Comercial Asociado':     'Subzona DCA',
+        'Fecha Proceso Autorización':               'Fecha',
+        'Cantidad Prestaciones Aceptadas':          'Q',
+    }, inplace=True)
+    amb_rubros_subrubros(df)
+    return df
 
 _VENTANA_DIAS = 30
 _FACTOR_FERIADO_PURO = 0.10
@@ -37,7 +52,7 @@ def proyeccion_diaria(
     ne_amb: pd.DataFrame,
     hoy: pd.Timestamp = None,
     periodo_actual: str = None,
-    col_qty: str = 'Cantidad Prestaciones Aceptadas',
+    col_qty: str = 'Q',
 ) -> pd.DataFrame:
     """
     Proyección diaria de ambulatorio para el mes en curso.
@@ -188,7 +203,7 @@ def proyeccion_ejercicio(
     val_amb: pd.DataFrame,
     hoy: pd.Timestamp = None,
     periodo_actual: str = None,
-    col_qty: str = 'Cantidad Prestaciones Aceptadas',
+    col_qty: str = 'Q',
 ) -> pd.DataFrame:
     """
     Proyección del ejercicio (todos los periodos) de ambulatorio.
@@ -281,19 +296,24 @@ def proyeccion_ejercicio(
         (desvio['Aut. Proyectadas'] / desvio['Nivel Esperado']) - 1
     ).round(6)
 
-    valorizado = desvio.merge(
-        val_amb,
-        on=['Periodo', 'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
-        how='left',
-    )
-    valorizado['Faltante'] = valorizado['Aut. Proyectadas'] - valorizado['Prestaciones']
-    valorizado['Dif. valorizada Periodo Prestación'] = (
-        valorizado['Conversor'] * valorizado['VU']
-        * (valorizado['Aut. Proyectadas'] - valorizado['Nivel Esperado'])
-    )
-    valorizado['Dif. valorizada'] = (
-        valorizado['M2'] * valorizado['Dif. valorizada Periodo Prestación']
-    ).fillna(0)
+    desvio['Faltante'] = desvio['Aut. Proyectadas'] - desvio['Prestaciones']
+
+    if val_amb is not None:
+        valorizado = desvio.merge(
+            val_amb,
+            on=['Periodo', 'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
+            how='left',
+        )
+        valorizado['Dif. valorizada Periodo Prestación'] = (
+            valorizado['Conversor'] * valorizado['VU']
+            * (valorizado['Aut. Proyectadas'] - valorizado['Nivel Esperado'])
+        )
+        valorizado['Dif. valorizada'] = (
+            valorizado['M2'] * valorizado['Dif. valorizada Periodo Prestación']
+        ).fillna(0)
+    else:
+        valorizado = desvio.copy()
+        valorizado['Dif. valorizada'] = 0.0
 
     cols_out = [
         'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo',

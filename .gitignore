@@ -1,5 +1,5 @@
 .env
-.conversor/
+.SdA/
 credentials.json
 CLAUDE.md
 __pycache__/
