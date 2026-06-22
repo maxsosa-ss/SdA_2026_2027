@@ -14,7 +14,7 @@ def load_proyeccion_diaria(df: pd.DataFrame) -> None:
 
 def load_proyeccion_ejercicio(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_PROYECCION_EJERCICIO, _RANGO_PROYECCION_EJERCICIO, _prepare(df), clear_first=True)
-
+    
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()

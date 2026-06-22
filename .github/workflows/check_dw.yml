@@ -1,0 +1,36 @@
+name: Check DW
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [check-dw]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Verificar estado del DW
+        env:
+          MSTR_USER:           ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD:       ${{ secrets.MSTR_PASSWORD }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python scripts/check_dw.py
+
+      - name: Notificar error inesperado en Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.utils.discord import notify_error;
+          notify_error('Error al verificar el DW', Exception('El workflow check-dw falló inesperadamente. Logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"
