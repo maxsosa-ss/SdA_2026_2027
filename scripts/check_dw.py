@@ -1,24 +1,15 @@
 import os
-
 import pandas as pd
 import requests
-from mstrio.connection import Connection
 from mstrio.project_objects import Report
+from src.utils.connections import get_mstr_conn
 
 REPORT_ID = '96B3AA41488F3ABAE3C37C97DB658B23'
 IDS_INTERES = ['6', '37', '14', '17']
 
-MSTR_BASE_URL = 'https://tablerosancorsalud.cloud.microstrategy.com/MicroStrategyLibrary/api'
-MSTR_PROJECT_ID = 'DAE6DF9811D67BD9500010A51D1D2ADA'
-
 
 def fetch_tabla_control() -> pd.DataFrame:
-    conn = Connection(
-        MSTR_BASE_URL,
-        os.environ['MSTR_USER'],
-        os.environ['MSTR_PASSWORD'],
-        project_id=MSTR_PROJECT_ID,
-    )
+    conn = get_mstr_conn()
     df = Report(id=REPORT_ID, connection=conn, progress_bar=False).to_dataframe()
     conn.close()
 
@@ -40,6 +31,7 @@ def build_discord_message(tabla: pd.DataFrame) -> str:
         fecha_str = ts.strftime('%d/%m/%Y %H:%M') if pd.notna(ts) else str(row['Última Actualización'])
         lineas.append(f'🔹 **{row["Proceso"]}**')
         lineas.append(f'   🕐 {fecha_str}')
+        lineas.append('')
     return '\n'.join(lineas)
 
 
