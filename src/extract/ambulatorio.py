@@ -38,15 +38,14 @@ def extract_ne_amb() -> pd.DataFrame:
 
 def extract_feriados() -> dict:
     """
-    Retorna dict con 4 DatetimeIndex: feriados, feriado_puro, no_laborables, fiestas.
+    Retorna dict con 3 DatetimeIndex: feriado, no_laborable, turistico.
     Columnas GSheets (feriados!A:C): Fecha | Feriado | Tipo
     """
     df = leer_tabla_df(_SHEET_AUX, 'feriados!A1:C166')
-    df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
-    tipo = df['Tipo']
+    df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst=True, errors='coerce')
+    tipo = df['Tipo'].str.strip().str.lower()
     return dict(
-        feriados      = pd.DatetimeIndex(df['Fecha']),
-        feriado_puro  = pd.DatetimeIndex(df.loc[tipo == 'Feriado Puro',  'Fecha']),
-        no_laborables = pd.DatetimeIndex(df.loc[tipo == 'No Laborable',  'Fecha']),
-        fiestas       = pd.DatetimeIndex(df.loc[tipo == 'Fiesta',        'Fecha']),
+        feriado      = pd.DatetimeIndex(df.loc[tipo == 'feriado',          'Fecha'].dropna()),
+        no_laborable = pd.DatetimeIndex(df.loc[tipo == 'día no laborable', 'Fecha'].dropna()),
+        turistico    = pd.DatetimeIndex(df.loc[tipo == 'turístico',        'Fecha'].dropna()),
     )

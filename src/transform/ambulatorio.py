@@ -45,10 +45,9 @@ def _acumulado_proyectado_grupo(g: pd.DataFrame) -> pd.Series:
 
 def proyeccion_diaria(
     df: pd.DataFrame,
-    feriados,
-    feriado_puro,
-    no_laborables,
-    fiestas,
+    feriado,
+    no_laborable,
+    turistico,
     ne_amb: pd.DataFrame,
     hoy: pd.Timestamp = None,
     periodo_actual: str = None,
@@ -61,10 +60,9 @@ def proyeccion_diaria(
     ----------
     df : DataFrame ambulatorio ya mapeado (post amb_rubros_subrubros), con columnas:
          Fecha (datetime), Rubro PPTO, Subrubro PPTO, Periodo, {col_qty}
-    feriados : fechas excluidas del promedio semanal (DatetimeIndex o lista de strings)
-    feriado_puro : lista de strings — feriados con actividad ~10 %
-    no_laborables : lista de strings — días no laborables con actividad ~50 %
-    fiestas : lista de strings — fiestas con actividad ~25 %
+    feriado      : DatetimeIndex — feriados con actividad ~10 %
+    no_laborable : DatetimeIndex — días no laborables con actividad ~50 %
+    turistico    : DatetimeIndex — días turísticos con actividad ~25 %
     ne_amb : DataFrame con columnas Subrubro, Periodo, Nivel Esperado (desde GSheets)
     hoy : fecha de referencia; default = fecha_hoy de utils.dates
     periodo_actual : str 'YYYYMM'; default = p_actual de utils.dates
@@ -79,10 +77,10 @@ def proyeccion_diaria(
     hoy = hoy or fecha_hoy.normalize()
     periodo_actual = periodo_actual or p_actual
 
-    feriados_dt = _to_dt_index(feriados)
-    feriado_puro_dt = _to_dt_index(feriado_puro)
-    no_laborables_dt = _to_dt_index(no_laborables)
-    fiestas_dt = _to_dt_index(fiestas)
+    feriado_dt      = _to_dt_index(feriado)
+    no_laborable_dt = _to_dt_index(no_laborable)
+    turistico_dt    = _to_dt_index(turistico)
+    feriados_excl   = feriado_dt | no_laborable_dt | turistico_dt
 
     fecha_inicio_ventana = hoy - pd.Timedelta(days=_VENTANA_DIAS)
 
@@ -94,7 +92,7 @@ def proyeccion_diaria(
         .rename(columns={col_qty: 'Prestaciones'})
     )
     hist['Dia_Semana'] = hist['Fecha'].dt.day_name()
-    hist['Es_Feriado'] = hist['Fecha'].isin(feriados_dt)
+    hist['Es_Feriado'] = hist['Fecha'].isin(feriados_excl)
 
     # --- Promedio por día de la semana (excluyendo feriados) ---
     prom_semana = (
@@ -112,7 +110,7 @@ def proyeccion_diaria(
 
     cal = pd.DataFrame({'Fecha': pd.date_range(inicio_mes, fin_mes)})
     cal['Dia_Semana'] = cal['Fecha'].dt.day_name()
-    cal['Es_Feriado'] = cal['Fecha'].isin(feriados_dt)
+    cal['Es_Feriado'] = cal['Fecha'].isin(feriados_excl)
 
     # --- Producto cartesiano: calendario × combinaciones únicas ---
     combinaciones = hist[['Rubro PPTO', 'Subrubro PPTO']].drop_duplicates()
@@ -131,17 +129,17 @@ def proyeccion_diaria(
     # --- Nivel Proyectado con ajustes por tipo de día ---
     base['Nivel Proyectado'] = base['Promedio_Semanal']
     base['Nivel Proyectado'] = np.where(
-        base['Fecha'].isin(feriado_puro_dt),
+        base['Fecha'].isin(feriado_dt),
         (base['Nivel Proyectado'] * _FACTOR_FERIADO_PURO).round(),
         base['Nivel Proyectado'],
     )
     base['Nivel Proyectado'] = np.where(
-        base['Fecha'].isin(no_laborables_dt),
+        base['Fecha'].isin(no_laborable_dt),
         (base['Nivel Proyectado'] * _FACTOR_NO_LABORABLE).round(),
         base['Nivel Proyectado'],
     )
     base['Nivel Proyectado'] = np.where(
-        base['Fecha'].isin(fiestas_dt),
+        base['Fecha'].isin(turistico_dt),
         (base['Nivel Proyectado'] * _FACTOR_FIESTA).round(),
         base['Nivel Proyectado'],
     )
