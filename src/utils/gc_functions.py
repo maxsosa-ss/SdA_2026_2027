@@ -1,8 +1,15 @@
 import pandas as pd
-from .connections import creds
 from googleapiclient.discovery import build
 
-_service = build('sheets', 'v4', credentials=creds)
+_service = None
+
+
+def _get_service():
+    global _service
+    if _service is None:
+        from .connections import get_google_creds
+        _service = build('sheets', 'v4', credentials=get_google_creds())
+    return _service
 
 # Función para leer un rango de Google Sheets y devolver un DataFrame
 def leer_tabla_df(spreadsheet_id, rango):
@@ -15,7 +22,7 @@ def leer_tabla_df(spreadsheet_id, rango):
     :return: pd.DataFrame
     """
     try:
-        resultado = _service.spreadsheets().values().get(
+        resultado = _get_service().spreadsheets().values().get(
             spreadsheetId=spreadsheet_id, range=rango
         ).execute()
 
@@ -49,11 +56,11 @@ def escribir_tabla_df(spreadsheet_id, rango, df, incluir_cabecera=True, clear_fi
         valores.extend(df_limpio.values.tolist())
 
         if clear_first:
-            _service.spreadsheets().values().clear(
+            _get_service().spreadsheets().values().clear(
                 spreadsheetId=spreadsheet_id, range=rango
             ).execute()
 
-        resultado = _service.spreadsheets().values().update(
+        resultado = _get_service().spreadsheets().values().update(
             spreadsheetId=spreadsheet_id,
             range=rango,
             valueInputOption='USER_ENTERED',

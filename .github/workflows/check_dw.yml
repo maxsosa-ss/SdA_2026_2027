@@ -24,6 +24,7 @@ jobs:
           MSTR_USER:           ${{ secrets.MSTR_USER }}
           MSTR_PASSWORD:       ${{ secrets.MSTR_PASSWORD }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PYTHONPATH: .
         run: python scripts/check_dw.py
 
       - name: Notificar error inesperado en Discord
