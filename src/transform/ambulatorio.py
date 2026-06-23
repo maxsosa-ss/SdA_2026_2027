@@ -80,7 +80,7 @@ def proyeccion_diaria(
     feriado_dt      = _to_dt_index(feriado)
     no_laborable_dt = _to_dt_index(no_laborable)
     turistico_dt    = _to_dt_index(turistico)
-    feriados_excl   = feriado_dt | no_laborable_dt | turistico_dt
+    feriados_excl   = feriado_dt.union(no_laborable_dt).union(turistico_dt)
 
     fecha_inicio_ventana = hoy - pd.Timedelta(days=_VENTANA_DIAS)
 
