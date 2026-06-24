@@ -35,12 +35,21 @@ def _acumulado_proyectado_grupo(g: pd.DataFrame) -> pd.Series:
     """
     Vectoriza el acumulado proyectado por grupo (Subrubro):
     - Mientras hay Nivel Real: usa Acumulado Real.
-    - A partir del primer día sin dato real: continúa acumulando Nivel Proyectado.
+    - A partir del día siguiente al último real: acumula Nivel Proyectado.
     """
     tiene_real = g['Nivel Real'] > 0
-    ultimo_real = g.loc[tiene_real, 'Acumulado Real'].iloc[-1] if tiene_real.any() else 0
-    proy_cumsum = g['Nivel Proyectado'].where(~tiene_real, 0).cumsum()
-    return g['Acumulado Real'].where(tiene_real, ultimo_real + proy_cumsum)
+    if not tiene_real.any():
+        return g['Nivel Proyectado'].cumsum()
+
+    ultimo_pos = tiene_real.values.nonzero()[0][-1]
+    ultimo_real_val = g['Acumulado Real'].iloc[ultimo_pos]
+
+    # Acumular Nivel Proyectado solo desde el día posterior al último real
+    es_post_real = pd.Series(False, index=g.index)
+    es_post_real.iloc[ultimo_pos + 1:] = True
+    proy_cumsum = g['Nivel Proyectado'].where(es_post_real, 0).cumsum()
+
+    return g['Acumulado Real'].where(tiene_real, ultimo_real_val + proy_cumsum)
 
 
 def proyeccion_diaria(
@@ -94,9 +103,10 @@ def proyeccion_diaria(
     hist['Dia_Semana'] = hist['Fecha'].dt.day_name()
     hist['Es_Feriado'] = hist['Fecha'].isin(feriados_excl)
 
-    # --- Promedio por día de la semana (excluyendo feriados) ---
+    # --- Promedio por día de la semana (excluyendo feriados y hoy) ---
+    # Se excluye hoy para evitar que datos parciales distorsionen el promedio del weekday
     prom_semana = (
-        hist.loc[~hist['Es_Feriado']]
+        hist.loc[~hist['Es_Feriado'] & (hist['Fecha'] < hoy)]
         .groupby(['Rubro PPTO', 'Subrubro PPTO', 'Dia_Semana'], as_index=False)
         .agg({'Prestaciones': 'mean'})
         .rename(columns={'Prestaciones': 'Promedio_Semanal'})

@@ -1,5 +1,5 @@
 from src.stage.ambulatorio import read as stage_read, stage_u6m
-from src.extract.ambulatorio import extract_u6m, extract_ne_amb, extract_feriados
+from src.extract.ambulatorio import extract_u6m, extract_ne_amb, extract_feriados, extract_val_amb
 from src.transform.ambulatorio import preparar, proyeccion_diaria, proyeccion_ejercicio
 from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio
 from src.utils.discord import notify_success, notify_error
@@ -9,8 +9,9 @@ def run():
     stage_u6m(extract_u6m())
 
     df_raw = stage_read()
-    ne_amb = extract_ne_amb()
-    cal    = extract_feriados()
+    ne_amb  = extract_ne_amb()
+    cal     = extract_feriados()
+    val_amb = extract_val_amb()
 
     df = preparar(df_raw)
 
@@ -25,7 +26,7 @@ def run():
         df,
         proyamb_dia,
         ne_amb,
-        val_amb=None,   # TODO: agregar extract_val_amb() cuando esté disponible
+        val_amb=val_amb,
     )
 
     load_proyeccion_diaria(proyamb_dia)
