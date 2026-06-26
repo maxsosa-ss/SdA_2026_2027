@@ -1,0 +1,88 @@
+name: Pipeline Maestro
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [actualizar-todo]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Restaurar parquet ambulatorio
+        id: cache-ambulatorio
+        uses: actions/cache@v4
+        with:
+          path: data/raw/ambulatorio.parquet
+          key: ambulatorio-parquet-${{ github.run_id }}
+          restore-keys: ambulatorio-parquet-
+
+      - name: Restaurar parquet farmvac
+        id: cache-farmvac
+        uses: actions/cache@v4
+        with:
+          path: data/raw/farmvac.parquet
+          key: farmvac-parquet-${{ github.run_id }}
+          restore-keys: farmvac-parquet-
+
+      - name: Escribir credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+
+      - name: E→S Ambulatorio
+        if: steps.cache-ambulatorio.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.ambulatorio import extract_u6m;
+          from src.stage.ambulatorio import stage_u6m;
+          stage_u6m(extract_u6m())"
+
+      - name: T→L Ambulatorio
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/ambulatorio.py
+
+      - name: E→S Farmvac
+        if: steps.cache-farmvac.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.farmvac import extract_farm_u6m, extract_vac_u6m;
+          from src.stage.farmvac import stage_u6m;
+          stage_u6m(extract_farm_u6m(), extract_vac_u6m())"
+
+      - name: T→L Farmvac
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/farmvac.py
+
+      - name: Subir SQLite como artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sda-sqlite-${{ github.run_id }}
+          path: data/processed/sda.sqlite
+          retention-days: 30
+
+      - name: Notificar error en Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.utils.discord import notify_error;
+          notify_error('Error en GitHub Actions - Pipeline Maestro', Exception('El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"
