@@ -6,9 +6,14 @@ from src.utils.discord import notify_success, notify_error
 
 
 def run():
+    """E→S→T→L completo (uso local)."""
     stage_u6m(extract_u6m())
+    _run_tl()
 
-    df_raw = stage_read()
+
+def _run_tl():
+    """T→L únicamente; asume que el parquet ya está staged."""
+    df_raw  = stage_read()
     ne_amb  = extract_ne_amb()
     cal     = extract_feriados()
     val_amb = extract_val_amb()
@@ -43,7 +48,7 @@ def run():
 
 if __name__ == '__main__':
     try:
-        run()
+        _run_tl()
     except Exception as exc:
         notify_error('Error en pipeline ambulatorio', exc)
         raise

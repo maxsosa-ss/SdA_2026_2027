@@ -4,3 +4,4 @@ credentials.json
 CLAUDE.md
 __pycache__/
 **/__pycache__/
+data/processed/sda.sqlite

@@ -43,10 +43,16 @@ jobs:
 
       - name: Ejecutar pipeline (T -> L)
         env:
-          MSTR_USER:           ${{ secrets.MSTR_USER }}
-          MSTR_PASSWORD:       ${{ secrets.MSTR_PASSWORD }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: PYTHONPATH=. python src/pipelines/farmvac.py
+
+      - name: Subir SQLite como artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sda-sqlite-farmvac-${{ github.run_id }}
+          path: data/processed/sda.sqlite
+          retention-days: 30
 
       - name: Notificar error en Discord
         if: failure()

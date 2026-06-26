@@ -12,8 +12,13 @@ from src.utils.discord import notify_success, notify_error
 
 
 def run():
+    """E→S→T→L completo (uso local)."""
     stage_u6m(extract_farm_u6m(), extract_vac_u6m())
+    _run_tl()
 
+
+def _run_tl():
+    """T→L únicamente; asume que el parquet ya está staged."""
     df_raw = stage_read()
     ne_q   = extract_ne_farmvac_q()
     ne_imp = extract_ne_farmvac_imp()
@@ -21,14 +26,8 @@ def run():
 
     df = preparar(df_raw)
 
-    proy_dia = proyeccion_diaria(
-        df,
-        cal['feriado'],
-        cal['no_laborable'],
-        cal['turistico'],
-        ne_q,
-    )
-    proy_ej  = proyeccion_ejercicio(df, proy_dia, ne_q)
+    proy_dia    = proyeccion_diaria(df, cal['feriado'], cal['no_laborable'], cal['turistico'], ne_q)
+    proy_ej     = proyeccion_ejercicio(df, proy_dia, ne_q)
     proy_imp    = proyeccion_importe(df, proy_dia, ne_imp)
     seg_imp_dia = seg_proy_importe(df, proy_dia, ne_imp)
 
@@ -40,16 +39,16 @@ def run():
     notify_success(
         'Farmvac actualizado',
         fields=[
-            {'name': 'Seguimiento diario',    'value': f'{len(proy_dia):,} filas',    'inline': True},
-            {'name': 'General (ejercicio)',    'value': f'{len(proy_ej):,} filas',     'inline': True},
-            {'name': 'Proy. importe diario',  'value': f'{len(seg_imp_dia):,} fila',  'inline': True},
+            {'name': 'Seguimiento diario',   'value': f'{len(proy_dia):,} filas',   'inline': True},
+            {'name': 'General (ejercicio)',   'value': f'{len(proy_ej):,} filas',    'inline': True},
+            {'name': 'Proy. importe diario', 'value': f'{len(seg_imp_dia):,} fila', 'inline': True},
         ],
     )
 
 
 if __name__ == '__main__':
     try:
-        run()
+        _run_tl()
     except Exception as exc:
         notify_error('Error en pipeline farmvac', exc)
         raise
