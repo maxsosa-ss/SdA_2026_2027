@@ -1,11 +1,12 @@
 import pandas as pd
-from src.utils.gc_functions import escribir_tabla_df
+from src.utils.gc_functions import escribir_tabla_df, leer_tabla_df
 from src.load.sqlite import save_snapshot
 
-_SHEET_OUTPUT    = '1DNpmKUjIOuHPCBrMN8Ww5xlmJ1XQAvGcH3wMFujvMNU'
-_RANGO_DIARIO    = 'farmvac_seg_diario!A1'
-_RANGO_GRAL_Q    = 'farmvac_gral_Q!A1'
-_RANGO_GRAL_IMP  = 'farmvac_gral_imp!A1'
+_SHEET_OUTPUT        = '1DNpmKUjIOuHPCBrMN8Ww5xlmJ1XQAvGcH3wMFujvMNU'
+_RANGO_DIARIO        = 'farmvac_seg_diario!A1'
+_RANGO_GRAL_Q        = 'farmvac_gral_Q!A1'
+_RANGO_GRAL_IMP      = 'farmvac_gral_imp!A1'
+_RANGO_SEG_PROY_IMP  = 'farm_proy_imp_diario!A1'
 
 
 def load_proyeccion_diaria(df: pd.DataFrame) -> None:
@@ -21,6 +22,19 @@ def load_proyeccion_ejercicio(df: pd.DataFrame) -> None:
 def load_proyeccion_importe(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_GRAL_IMP, _prepare(df), clear_first=True)
     save_snapshot(df, 'farm_gral_imp')
+
+
+def load_seg_proy_importe(df: pd.DataFrame) -> None:
+    nueva_fila = _prepare(df)
+    fecha_hoy = nueva_fila['Fecha'].iloc[0]
+
+    historial = leer_tabla_df(_SHEET_OUTPUT, _RANGO_SEG_PROY_IMP)
+    if not historial.empty:
+        historial = historial[historial['Fecha'] != fecha_hoy]
+
+    resultado = pd.concat([historial, nueva_fila], ignore_index=True)
+    escribir_tabla_df(_SHEET_OUTPUT, _RANGO_SEG_PROY_IMP, resultado, clear_first=True)
+    save_snapshot(df, 'farm_seg_proy_imp')
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:

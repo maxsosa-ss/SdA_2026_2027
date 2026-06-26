@@ -1,0 +1,58 @@
+name: Farmvac Pipeline
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [actualizar-farmvac]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-pipeline.txt
+
+      - name: Restaurar parquet cacheado
+        id: cache-parquet
+        uses: actions/cache@v4
+        with:
+          path: data/raw/farmvac.parquet
+          key: farmvac-parquet-${{ github.run_id }}
+          restore-keys: farmvac-parquet-
+
+      - name: Escribir credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+
+      - name: Sync ultimos 6 meses (E -> S)
+        if: steps.cache-parquet.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.farmvac import extract_farm_u6m, extract_vac_u6m;
+          from src.stage.farmvac import stage_u6m;
+          stage_u6m(extract_farm_u6m(), extract_vac_u6m())"
+
+      - name: Ejecutar pipeline (T -> L)
+        env:
+          MSTR_USER:           ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD:       ${{ secrets.MSTR_PASSWORD }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/farmvac.py
+
+      - name: Notificar error en Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.utils.discord import notify_error;
+          notify_error('Error en GitHub Actions - Farmvac', Exception('El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"

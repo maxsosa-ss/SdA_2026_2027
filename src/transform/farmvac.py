@@ -249,6 +249,66 @@ def proyeccion_ejercicio(
     return result[cols]
 
 
+def seg_proy_importe(
+    df: pd.DataFrame,
+    proy_dia: pd.DataFrame,
+    ne_imp: pd.DataFrame,
+    hoy: pd.Timestamp = None,
+    periodo_actual: str = None,
+    col_qty: str = 'Q',
+) -> pd.DataFrame:
+    """
+    Fila diaria de seguimiento del importe proyectado de Farmacia.
+    Columnas: Fecha | Real | Importe Proyectado | Nivel Esperado
+    """
+    hoy = hoy or fecha_hoy.normalize()
+    periodo_actual = periodo_actual or p_actual
+    ayer = hoy - pd.Timedelta(days=1)
+
+    farm_period = (
+        df.loc[
+            (df['Subrubro'] == 'Farmacia') &
+            (df['Periodo'].astype(str) == str(periodo_actual)) &
+            (df['Fecha'] < hoy),
+            ['Fecha', col_qty, 'Importe']
+        ]
+        .groupby('Fecha', as_index=False)
+        .agg({col_qty: 'sum', 'Importe': 'sum'})
+    )
+
+    total_importe_real = farm_period['Importe'].sum()
+    promedio_costo = 0.0
+    if not farm_period.empty and farm_period[col_qty].sum() > 0:
+        promedio_costo = (
+            farm_period['Importe'] / farm_period[col_qty].replace(0, np.nan)
+        ).mean()
+        if pd.isna(promedio_costo):
+            promedio_costo = 0.0
+
+    acum_proy_fin  = int(proy_dia['Acumulado Proyectado'].iloc[-1])
+    ayer_real_s    = proy_dia.loc[proy_dia['Fecha'] == ayer, 'Acumulado Real']
+    acum_real_ayer = int(ayer_real_s.iloc[0]) if not ayer_real_s.empty else 0
+    q_faltantes    = max(acum_proy_fin - acum_real_ayer, 0)
+
+    proy_imp_valor = round(promedio_costo * q_faltantes + total_importe_real, 2)
+
+    nivel_esperado = round(
+        ne_imp.loc[
+            (ne_imp['Subrubro'] == 'Farmacia') &
+            (ne_imp['Periodo'].astype(str) == str(periodo_actual)),
+            'Nivel Esperado $',
+        ].sum(),
+        2,
+    )
+
+    return pd.DataFrame([{
+        'Fecha':              hoy,
+        'Real':               round(total_importe_real, 2),
+        'Importe Proyectado': proy_imp_valor,
+        'Nivel Esperado':     nivel_esperado,
+    }])
+
+
 def proyeccion_importe(
     df: pd.DataFrame,
     proy_dia: pd.DataFrame,
