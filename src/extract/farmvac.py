@@ -1,5 +1,7 @@
 import pandas as pd
+import requests
 from mstrio.project_objects import Report
+from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from src.utils.connections import get_mstr_conn
 from src.utils.gc_functions import leer_tabla_df
 
@@ -13,6 +15,12 @@ _RANGO_NE_Q   = 'NE_farm_Q!A1:F1765'
 _RANGO_NE_IMP = 'NE_farm_imp!A1:F1765'
 
 
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.ConnectionError),
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(10),
+    reraise=True,
+)
 def _fetch(report_id: str, conn) -> pd.DataFrame:
     return Report(id=report_id, connection=conn, progress_bar=False).to_dataframe()
 
