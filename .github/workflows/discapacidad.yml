@@ -1,0 +1,56 @@
+name: Discapacidad Pipeline
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [actualizar-discapacidad]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Restaurar parquet cacheado
+        id: cache-parquet
+        uses: actions/cache@v4
+        with:
+          path: data/raw/discapacidad.parquet
+          key: discapacidad-parquet-${{ github.run_id }}
+          restore-keys: discapacidad-parquet-
+
+      - name: Escribir credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+
+      - name: Sync discapacidad (E -> S)
+        if: steps.cache-parquet.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.discapacidad import extract_discapacidad;
+          from src.stage.discapacidad import stage;
+          stage(extract_discapacidad())"
+
+      - name: Ejecutar pipeline (T -> L)
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/discapacidad.py
+
+      - name: Notificar error en Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.utils.discord import notify_error;
+          notify_error('Error en GitHub Actions - Discapacidad', Exception('El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"
