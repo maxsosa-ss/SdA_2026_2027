@@ -29,8 +29,10 @@ def leer_tabla_df(spreadsheet_id, rango):
         valores = resultado.get('values', [])
 
         if not valores:
+            print(f"[leer_tabla_df] WARN: rango '{rango}' devolvió vacío")
             return pd.DataFrame()
 
+        print(f"[leer_tabla_df] rango '{rango}': {len(valores) - 1} filas leídas")
         return pd.DataFrame(valores[1:], columns=valores[0])
 
     except Exception as e:

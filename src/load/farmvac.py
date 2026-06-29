@@ -6,7 +6,7 @@ _SHEET_OUTPUT        = '1DNpmKUjIOuHPCBrMN8Ww5xlmJ1XQAvGcH3wMFujvMNU'
 _RANGO_DIARIO        = 'farmvac_seg_diario!A1'
 _RANGO_GRAL_Q        = 'farmvac_gral_Q!A1'
 _RANGO_GRAL_IMP      = 'farmvac_gral_imp!A1'
-_RANGO_SEG_PROY_IMP  = 'farm_proy_imp_diario!A1'
+_RANGO_SEG_PROY_IMP  = 'farm_proy_imp_diario'
 
 
 def load_proyeccion_diaria(df: pd.DataFrame) -> None:
@@ -29,7 +29,16 @@ def load_seg_proy_importe(df: pd.DataFrame) -> None:
     fecha_hoy = nueva_fila['Fecha'].iloc[0]
 
     historial = leer_tabla_df(_SHEET_OUTPUT, _RANGO_SEG_PROY_IMP)
+
+    # Validate that the read returned expected columns before trusting it.
+    # An empty result when we expect history is safer to abort than to silently
+    # overwrite accumulated rows.
+    columnas_esperadas = set(nueva_fila.columns)
     if not historial.empty:
+        if not columnas_esperadas.issubset(set(historial.columns)):
+            raise RuntimeError(
+                f"leer_tabla_df devolvió columnas inesperadas: {list(historial.columns)}"
+            )
         historial = historial[historial['Fecha'] != fecha_hoy]
 
     resultado = pd.concat([historial, nueva_fila], ignore_index=True)

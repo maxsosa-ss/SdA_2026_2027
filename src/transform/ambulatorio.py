@@ -21,7 +21,7 @@ def preparar(df: pd.DataFrame) -> pd.DataFrame:
 _VENTANA_DIAS = 30
 _FACTOR_FERIADO_PURO = 0.10
 _FACTOR_NO_LABORABLE = 0.50
-_FACTOR_FIESTA = 0.25
+_FACTOR_TURISTICO = 0.25
 
 
 def _to_dt_index(fechas) -> pd.DatetimeIndex:
@@ -150,7 +150,7 @@ def proyeccion_diaria(
     )
     base['Nivel Proyectado'] = np.where(
         base['Fecha'].isin(turistico_dt),
-        (base['Nivel Proyectado'] * _FACTOR_FIESTA).round(),
+        (base['Nivel Proyectado'] * _FACTOR_TURISTICO).round(),
         base['Nivel Proyectado'],
     )
 
