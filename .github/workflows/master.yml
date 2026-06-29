@@ -1,4 +1,4 @@
-name: Pipeline Maestro
+name: Master Pipeline
 
 on:
   workflow_dispatch:
@@ -85,4 +85,4 @@ jobs:
         run: |
           PYTHONPATH=. python -c "
           from src.utils.discord import notify_error;
-          notify_error('Error en GitHub Actions - Pipeline Maestro', Exception('El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"
+          notify_error('Error en GitHub Actions - Master Pipeline', Exception('El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"

@@ -1,4 +1,5 @@
 from src.extract.provision import extract_provision, extract_provision_diario, extract_ne_provision
+from src.extract.ambulatorio import extract_feriados
 from src.stage.provision import read as stage_read, read_diario as stage_read_diario, stage, stage_diario
 from src.transform.provision import prov_gral, prov_diario
 from src.load.provision import load_prov_gral, load_prov_diario
@@ -17,11 +18,12 @@ def _run_tl():
     """T→L únicamente; asume que los parquets ya están staged."""
     df     = stage_read()
     df_dia = stage_read_diario()
-    ne     = extract_ne_provision()
-    hoy    = fecha_hoy.normalize()
+    ne       = extract_ne_provision()
+    cal      = extract_feriados()
+    hoy      = fecha_hoy.normalize()
 
     gral   = prov_gral(df, ne)
-    diario = prov_diario(df_dia, hoy)
+    diario = prov_diario(df_dia, hoy, feriados=cal)
 
     load_prov_gral(gral)
     load_prov_diario(diario)

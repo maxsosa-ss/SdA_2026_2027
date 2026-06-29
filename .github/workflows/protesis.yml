@@ -1,0 +1,56 @@
+name: Protesis Pipeline
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [actualizar-protesis]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Restaurar parquet cacheado
+        id: cache-parquet
+        uses: actions/cache@v4
+        with:
+          path: data/raw/protesis.parquet
+          key: protesis-parquet-${{ github.run_id }}
+          restore-keys: protesis-parquet-
+
+      - name: Escribir credentials.json
+        run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
+
+      - name: Sync protesis (E -> S)
+        if: steps.cache-parquet.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.protesis import extract_protesis;
+          from src.stage.protesis import stage;
+          stage(extract_protesis())"
+
+      - name: Ejecutar pipeline (T -> L)
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/protesis.py
+
+      - name: Notificar error en Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.utils.discord import notify_error;
+          notify_error('Error en GitHub Actions - Protesis', Exception('El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'))"
