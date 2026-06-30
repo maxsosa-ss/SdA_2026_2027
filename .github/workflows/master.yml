@@ -19,12 +19,16 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
+      - name: Calcular fecha (cache key)
+        id: vars
+        run: echo "today=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
       - name: Restaurar parquet ambulatorio
         id: cache-ambulatorio
         uses: actions/cache@v4
         with:
           path: data/raw/ambulatorio.parquet
-          key: ambulatorio-parquet-${{ github.run_id }}
+          key: ambulatorio-parquet-${{ steps.vars.outputs.today }}
           restore-keys: ambulatorio-parquet-
 
       - name: Restaurar parquet farmvac
@@ -32,7 +36,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/farmvac.parquet
-          key: farmvac-parquet-${{ github.run_id }}
+          key: farmvac-parquet-${{ steps.vars.outputs.today }}
           restore-keys: farmvac-parquet-
 
       - name: Restaurar parquet provision
@@ -42,7 +46,7 @@ jobs:
           path: |
             data/raw/provision.parquet
             data/raw/provision_diario.parquet
-          key: provision-parquet-${{ github.run_id }}
+          key: provision-parquet-${{ steps.vars.outputs.today }}
           restore-keys: provision-parquet-
 
       - name: Restaurar parquet discapacidad
@@ -50,7 +54,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/discapacidad.parquet
-          key: discapacidad-parquet-${{ github.run_id }}
+          key: discapacidad-parquet-${{ steps.vars.outputs.today }}
           restore-keys: discapacidad-parquet-
 
       - name: Restaurar parquet protesis
@@ -58,7 +62,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/protesis.parquet
-          key: protesis-parquet-${{ github.run_id }}
+          key: protesis-parquet-${{ steps.vars.outputs.today }}
           restore-keys: protesis-parquet-
 
       - name: Restaurar parquets internaciones
@@ -68,7 +72,7 @@ jobs:
           path: |
             data/raw/internaciones_sanatorial.parquet
             data/raw/internaciones_quirurgicas.parquet
-          key: internaciones-parquet-${{ github.run_id }}
+          key: internaciones-parquet-${{ steps.vars.outputs.today }}
           restore-keys: internaciones-parquet-
 
       - name: Escribir credentials.json

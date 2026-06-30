@@ -19,12 +19,16 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
+      - name: Calcular fecha (cache key)
+        id: vars
+        run: echo "today=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
       - name: Restaurar parquet cacheado
         id: cache-parquet
         uses: actions/cache@v4
         with:
           path: data/raw/ambulatorio.parquet
-          key: ambulatorio-parquet-${{ github.run_id }}
+          key: ambulatorio-parquet-${{ steps.vars.outputs.today }}
           restore-keys: ambulatorio-parquet-
 
       - name: Escribir credentials.json

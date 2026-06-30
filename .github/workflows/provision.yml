@@ -19,6 +19,10 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
 
+      - name: Calcular fecha (cache key)
+        id: vars
+        run: echo "today=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
       - name: Restaurar parquets cacheados
         id: cache-parquet
         uses: actions/cache@v4
@@ -26,7 +30,7 @@ jobs:
           path: |
             data/raw/provision.parquet
             data/raw/provision_diario.parquet
-          key: provision-parquet-${{ github.run_id }}
+          key: provision-parquet-${{ steps.vars.outputs.today }}
           restore-keys: provision-parquet-
 
       - name: Escribir credentials.json
