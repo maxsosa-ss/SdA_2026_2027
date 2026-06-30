@@ -61,6 +61,16 @@ jobs:
           key: protesis-parquet-${{ github.run_id }}
           restore-keys: protesis-parquet-
 
+      - name: Restaurar parquets internaciones
+        id: cache-internaciones
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/raw/internaciones_sanatorial.parquet
+            data/raw/internaciones_quirurgicas.parquet
+          key: internaciones-parquet-${{ github.run_id }}
+          restore-keys: internaciones-parquet-
+
       - name: Escribir credentials.json
         run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
@@ -144,6 +154,23 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: PYTHONPATH=. python src/pipelines/protesis.py
+
+      - name: E→S Internaciones
+        if: steps.cache-internaciones.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.internaciones import extract_sanatoriales, extract_quirurgicas;
+          from src.stage.internaciones import stage_sanatorial, stage_quirurgicas;
+          stage_sanatorial(extract_sanatoriales());
+          stage_quirurgicas(extract_quirurgicas())"
+
+      - name: T→L Internaciones
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/internaciones.py
 
       - name: Subir SQLite como artifact
         if: success()
