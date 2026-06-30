@@ -20,14 +20,14 @@ def load_quirurgicas(df: pd.DataFrame) -> None:
 
 
 def load_consolidado_sanatorial(df: pd.DataFrame) -> None:
-    _load_consolidado(df, _RANGO_CONS_SAN)
+    _load_consolidado(df, _RANGO_CONS_SAN, 'internaciones_consolidado_sanatorial')
 
 
 def load_consolidado_quirurgicas(df: pd.DataFrame) -> None:
-    _load_consolidado(df, _RANGO_CONS_QUIR)
+    _load_consolidado(df, _RANGO_CONS_QUIR, 'internaciones_consolidado_quirurgicas')
 
 
-def _load_consolidado(df: pd.DataFrame, rango: str) -> None:
+def _load_consolidado(df: pd.DataFrame, rango: str, table_name: str) -> None:
     nueva = _prepare(df)
     fecha_hoy = pd.Timestamp.today().normalize().strftime('%Y-%m-%d')
     nueva.insert(0, 'Fecha_Carga', fecha_hoy)
@@ -47,6 +47,7 @@ def _load_consolidado(df: pd.DataFrame, rango: str) -> None:
 
     resultado = pd.concat([historial, nueva], ignore_index=True)
     escribir_tabla_df(_SHEET_OUTPUT, rango, resultado, clear_first=True)
+    save_snapshot(df, table_name)
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:
