@@ -1,5 +1,9 @@
+import socket
+
 import pandas as pd
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_fixed
 
 _service = None
 
@@ -10,6 +14,25 @@ def _get_service():
         from .connections import get_google_creds
         _service = build('sheets', 'v4', credentials=get_google_creds())
     return _service
+
+
+def _es_error_transitorio(exc: BaseException) -> bool:
+    if isinstance(exc, (ConnectionError, TimeoutError, socket.timeout)):
+        return True
+    if isinstance(exc, HttpError):
+        return exc.resp.status in (429, 500, 502, 503, 504)
+    return False
+
+
+@retry(
+    retry=retry_if_exception(_es_error_transitorio),
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(5),
+    reraise=True,
+)
+def _execute(request):
+    return request.execute()
+
 
 # Función para leer un rango de Google Sheets y devolver un DataFrame
 def leer_tabla_df(spreadsheet_id, rango):
@@ -22,9 +45,11 @@ def leer_tabla_df(spreadsheet_id, rango):
     :return: pd.DataFrame
     """
     try:
-        resultado = _get_service().spreadsheets().values().get(
-            spreadsheetId=spreadsheet_id, range=rango
-        ).execute()
+        resultado = _execute(
+            _get_service().spreadsheets().values().get(
+                spreadsheetId=spreadsheet_id, range=rango
+            )
+        )
 
         valores = resultado.get('values', [])
 
@@ -58,16 +83,20 @@ def escribir_tabla_df(spreadsheet_id, rango, df, incluir_cabecera=True, clear_fi
         valores.extend(df_limpio.values.tolist())
 
         if clear_first:
-            _get_service().spreadsheets().values().clear(
-                spreadsheetId=spreadsheet_id, range=rango
-            ).execute()
+            _execute(
+                _get_service().spreadsheets().values().clear(
+                    spreadsheetId=spreadsheet_id, range=rango
+                )
+            )
 
-        resultado = _get_service().spreadsheets().values().update(
-            spreadsheetId=spreadsheet_id,
-            range=rango,
-            valueInputOption='USER_ENTERED',
-            body={'values': valores},
-        ).execute()
+        resultado = _execute(
+            _get_service().spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=rango,
+                valueInputOption='USER_ENTERED',
+                body={'values': valores},
+            )
+        )
 
         return True
 
