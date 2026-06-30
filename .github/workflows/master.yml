@@ -35,6 +35,32 @@ jobs:
           key: farmvac-parquet-${{ github.run_id }}
           restore-keys: farmvac-parquet-
 
+      - name: Restaurar parquet provision
+        id: cache-provision
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/raw/provision.parquet
+            data/raw/provision_diario.parquet
+          key: provision-parquet-${{ github.run_id }}
+          restore-keys: provision-parquet-
+
+      - name: Restaurar parquet discapacidad
+        id: cache-discapacidad
+        uses: actions/cache@v4
+        with:
+          path: data/raw/discapacidad.parquet
+          key: discapacidad-parquet-${{ github.run_id }}
+          restore-keys: discapacidad-parquet-
+
+      - name: Restaurar parquet protesis
+        id: cache-protesis
+        uses: actions/cache@v4
+        with:
+          path: data/raw/protesis.parquet
+          key: protesis-parquet-${{ github.run_id }}
+          restore-keys: protesis-parquet-
+
       - name: Escribir credentials.json
         run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
@@ -69,6 +95,55 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: PYTHONPATH=. python src/pipelines/farmvac.py
+
+      - name: E→S Provision
+        if: steps.cache-provision.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.provision import extract_provision, extract_provision_diario;
+          from src.stage.provision import stage, stage_diario;
+          stage(extract_provision());
+          stage_diario(extract_provision_diario())"
+
+      - name: T→L Provision
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/provision.py
+
+      - name: E→S Discapacidad
+        if: steps.cache-discapacidad.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.discapacidad import extract_discapacidad;
+          from src.stage.discapacidad import stage;
+          stage(extract_discapacidad())"
+
+      - name: T→L Discapacidad
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/discapacidad.py
+
+      - name: E→S Protesis
+        if: steps.cache-protesis.outputs.cache-hit != 'true'
+        env:
+          MSTR_USER:     ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
+        run: |
+          PYTHONPATH=. python -c "
+          from src.extract.protesis import extract_protesis;
+          from src.stage.protesis import stage;
+          stage(extract_protesis())"
+
+      - name: T→L Protesis
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: PYTHONPATH=. python src/pipelines/protesis.py
 
       - name: Subir SQLite como artifact
         if: success()
