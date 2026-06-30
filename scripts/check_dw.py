@@ -1,9 +1,8 @@
-import os
 import pandas as pd
-import requests
 from mstrio.api import cubes
 from mstrio.project_objects import Report
 from src.utils.connections import get_mstr_conn
+from src.utils.discord import notify_info
 
 REPORT_ID = '96B3AA41488F3ABAE3C37C97DB658B23'
 IDS_INTERES = ['6', '37', '14', '17']
@@ -40,32 +39,24 @@ def fetch_cubos_info(conn) -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
-def build_discord_message(tabla: pd.DataFrame, titulo: str, emoji: str, columna_nombre: str) -> str:
-    lineas = [f'{emoji} **{titulo}**', '']
+def build_discord_fields(tabla: pd.DataFrame, columna_nombre: str) -> list[dict]:
+    fields = []
     for _, row in tabla.iterrows():
         ts = pd.to_datetime(row['Última Actualización'], errors='coerce')
         fecha_str = ts.strftime('%d/%m/%Y %H:%M') if pd.notna(ts) else str(row['Última Actualización'])
-        lineas.append(f'🔹 **{row[columna_nombre]}**')
-        lineas.append(f'   🕐 {fecha_str}')
-        lineas.append('')
-    return '\n'.join(lineas)
-
-
-def post_discord(message: str) -> None:
-    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL', '')
-    if not webhook_url:
-        print(message)
-        return
-    requests.post(webhook_url, json={'content': message}, timeout=10)
+        fields.append({'name': row[columna_nombre], 'value': f'🕐 {fecha_str}', 'inline': True})
+    return fields
 
 
 if __name__ == '__main__':
     conn = get_mstr_conn()
     try:
         tabla = fetch_tabla_control(conn)
-        post_discord(build_discord_message(tabla, 'Estado del DW', '🗄️', 'Proceso'))
+        print(tabla)
+        notify_info('Estado del DW', build_discord_fields(tabla, 'Proceso'))
 
         cubos = fetch_cubos_info(conn)
-        post_discord(build_discord_message(cubos, 'Estado de Cubos', '📦', 'Cubo'))
+        print(cubos)
+        notify_info('Estado de Cubos', build_discord_fields(cubos, 'Cubo'))
     finally:
         conn.close()

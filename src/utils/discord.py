@@ -23,6 +23,15 @@ def notify_success(title: str, fields: list[dict] | None = None) -> None:
     _post({'embeds': [embed]})
 
 
+def notify_info(title: str, fields: list[dict] | None = None) -> None:
+    embed = {
+        'title': f':bar_chart: {title}',
+        'color': 0x3498DB,
+        'fields': fields or [],
+    }
+    _post({'embeds': [embed]})
+
+
 def notify_error(title: str, exc: Exception) -> None:
     tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__)).strip()
     if not tb:
