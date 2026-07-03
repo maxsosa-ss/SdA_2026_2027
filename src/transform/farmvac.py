@@ -77,10 +77,12 @@ def proyeccion_diaria(
         .rename(columns={col_qty: 'Cantidad'})
     )
     hist['Dia'] = hist['Fecha'].dt.day_name().map(_DIAS_ES)
-    hist.loc[hist['Fecha'].isin(todos_no_hab), 'Dia'] = 'feriado'
 
-    # --- Promedio por categoría de día ---
-    promedios = hist.groupby('Dia')['Cantidad'].mean().round()
+    # --- Promedio por día de la semana (excluye feriados/no laborables/turísticos) ---
+    promedios = (
+        hist.loc[~hist['Fecha'].isin(todos_no_hab)]
+        .groupby('Dia')['Cantidad'].mean().round()
+    )
 
     # --- Calendario del mes ---
     ultima_fecha = hist['Fecha'].max()
@@ -89,7 +91,6 @@ def proyeccion_diaria(
 
     cal = pd.DataFrame({'Fecha': pd.date_range(inicio_mes, fin_mes)})
     cal['Dia'] = cal['Fecha'].dt.day_name().map(_DIAS_ES)
-    cal.loc[cal['Fecha'].isin(todos_no_hab), 'Dia'] = 'feriado'
 
     # --- Nivel Real: Farmacia del mes, hasta ayer ---
     farm_mes = (
