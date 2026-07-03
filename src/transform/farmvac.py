@@ -382,6 +382,10 @@ def proyeccion_importe(
     )
     result.loc[mask, 'Proyección Importe'] = proy_imp_valor
 
+    # Meses ya cerrados: la proyección es el importe real (no hay nada que proyectar)
+    mask_pasado = result['Periodo'].astype(str) < str(periodo_actual)
+    result.loc[mask_pasado, 'Proyección Importe'] = result.loc[mask_pasado, 'Importe']
+
     cols = [
         'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo',
         'Nivel Esperado $', 'Importe', 'Proyección Importe',
