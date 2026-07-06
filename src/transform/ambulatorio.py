@@ -307,21 +307,37 @@ def proyeccion_ejercicio(
     desvio['Faltante'] = desvio['Aut. Proyectadas'] - desvio['Prestaciones']
 
     if val_amb is not None:
+        # El Conversor/VU/M2 se toma siempre del periodo anterior a periodo_actual,
+        # no del Periodo propio de cada fila (val_amb del mes en curso puede no estar cargado aún).
+        periodo_anterior = (
+            pd.to_datetime(str(periodo_actual), format='%Y%m') - pd.DateOffset(months=1)
+        ).strftime('%Y%m')
+        val_amb_anterior = val_amb.loc[val_amb['Periodo'].astype(str) == periodo_anterior]
+
         valorizado = desvio.merge(
-            val_amb,
-            on=['Periodo', 'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
+            val_amb_anterior.drop(columns='Periodo'),
+            on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
             how='left',
         )
         valorizado['Dif. valorizada Periodo Prestación'] = (
             valorizado['Conversor'] * valorizado['VU']
             * (valorizado['Aut. Proyectadas'] - valorizado['Nivel Esperado'])
-        )
+        ).fillna(0)
         valorizado['Dif. valorizada'] = (
             valorizado['M2'] * valorizado['Dif. valorizada Periodo Prestación']
         ).fillna(0)
     else:
         valorizado = desvio.copy()
         valorizado['Dif. valorizada'] = 0.0
+
+    # --- Mostrar Faltante / Dif. valorizada solo para periodos anteriores al actual,
+    # y para el actual recién a partir del día 10 (misma lógica que Aut. Proyectadas).
+    # Periodos posteriores al actual no tienen Prestaciones/Aut. Proyectadas reales, así que se ocultan.
+    periodo_valorizado = valorizado['Periodo'].astype(str)
+    mask_mostrar = (periodo_valorizado < str(periodo_actual)) | (
+        (periodo_valorizado == str(periodo_actual)) & (hoy.day > 10)
+    )
+    valorizado.loc[~mask_mostrar, ['Faltante', 'Dif. valorizada']] = 0
 
     cols_out = [
         'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo',
