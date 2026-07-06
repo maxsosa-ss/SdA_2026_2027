@@ -28,16 +28,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/ambulatorio.parquet
-          key: ambulatorio-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: ambulatorio-parquet-
+          key: master-ambulatorio-parquet-${{ steps.vars.outputs.today }}
+          restore-keys: master-ambulatorio-parquet-
 
       - name: Restaurar parquet farmvac
         id: cache-farmvac
         uses: actions/cache@v4
         with:
           path: data/raw/farmvac.parquet
-          key: farmvac-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: farmvac-parquet-
+          key: master-farmvac-parquet-${{ steps.vars.outputs.today }}
+          restore-keys: master-farmvac-parquet-
 
       - name: Restaurar parquet provision
         id: cache-provision
@@ -46,24 +46,24 @@ jobs:
           path: |
             data/raw/provision.parquet
             data/raw/provision_diario.parquet
-          key: provision-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: provision-parquet-
+          key: master-provision-parquet-${{ steps.vars.outputs.today }}
+          restore-keys: master-provision-parquet-
 
       - name: Restaurar parquet discapacidad
         id: cache-discapacidad
         uses: actions/cache@v4
         with:
           path: data/raw/discapacidad.parquet
-          key: discapacidad-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: discapacidad-parquet-
+          key: master-discapacidad-parquet-${{ steps.vars.outputs.today }}
+          restore-keys: master-discapacidad-parquet-
 
       - name: Restaurar parquet protesis
         id: cache-protesis
         uses: actions/cache@v4
         with:
           path: data/raw/protesis.parquet
-          key: protesis-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: protesis-parquet-
+          key: master-protesis-parquet-${{ steps.vars.outputs.today }}
+          restore-keys: master-protesis-parquet-
 
       - name: Restaurar parquets internaciones
         id: cache-internaciones
@@ -72,8 +72,15 @@ jobs:
           path: |
             data/raw/internaciones_sanatorial.parquet
             data/raw/internaciones_quirurgicas.parquet
-          key: internaciones-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: internaciones-parquet-
+          key: master-internaciones-parquet-${{ steps.vars.outputs.today }}
+          restore-keys: master-internaciones-parquet-
+
+      - name: Restaurar SQLite acumulado
+        uses: actions/cache@v4
+        with:
+          path: data/processed/sda.sqlite
+          key: sqlite-${{ steps.vars.outputs.today }}-${{ github.run_id }}
+          restore-keys: sqlite-
 
       - name: Escribir credentials.json
         run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json

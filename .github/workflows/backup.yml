@@ -1,0 +1,42 @@
+name: Backup SQLite
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [backup-sqlite]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Calcular fecha (cache key)
+        id: vars
+        run: echo "today=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Restaurar SQLite acumulado
+        id: cache-sqlite
+        uses: actions/cache/restore@v4
+        with:
+          path: data/processed/sda.sqlite
+          key: sqlite-${{ steps.vars.outputs.today }}-none
+          restore-keys: sqlite-
+
+      - name: Subir SQLite como artifact
+        if: steps.cache-sqlite.outputs.cache-matched-key != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: sda-sqlite-backup-${{ github.run_id }}
+          path: data/processed/sda.sqlite
+          retention-days: 30
+
+      - name: Notificar error en Discord
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -s -H "Content-Type: application/json" -d "{\"embeds\":[{\"title\":\":x: Error en GitHub Actions - Backup SQLite\",\"color\":15158332,\"description\":\"El workflow falló. Revisa los logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}" "$DISCORD_WEBHOOK_URL"
+          fi

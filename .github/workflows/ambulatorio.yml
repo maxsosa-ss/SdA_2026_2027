@@ -31,6 +31,13 @@ jobs:
           key: ambulatorio-parquet-${{ steps.vars.outputs.today }}
           restore-keys: ambulatorio-parquet-
 
+      - name: Restaurar SQLite acumulado
+        uses: actions/cache@v4
+        with:
+          path: data/processed/sda.sqlite
+          key: sqlite-${{ steps.vars.outputs.today }}-${{ github.run_id }}
+          restore-keys: sqlite-
+
       - name: Escribir credentials.json
         run: echo '${{ secrets.GOOGLE_CREDENTIALS }}' > credentials.json
 
