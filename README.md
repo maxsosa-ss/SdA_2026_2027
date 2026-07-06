@@ -62,7 +62,7 @@ Los 6 pipelines se disparan **de forma independiente** (en el orden que se quier
 
 ```mermaid
 flowchart TD
-    subgraph Pipelines individuales, en cualquier orden
+    subgraph "Pipelines individuales (en cualquier orden)"
         Amb[Ambulatorio<br/>E→S→T→L]
         Farm[Farmvac<br/>E→S→T→L]
         Prov[Provisión<br/>E→S→T→L]
