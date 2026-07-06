@@ -32,6 +32,15 @@ jobs:
           path: data/processed/sda.sqlite
           retention-days: 30
 
+      - name: Notificar éxito en Discord
+        if: success() && steps.cache-sqlite.outputs.cache-matched-key != ''
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -n "$DISCORD_WEBHOOK_URL" ]; then
+            curl -s -H "Content-Type: application/json" -d "{\"embeds\":[{\"title\":\":white_check_mark: Backup SQLite completado\",\"color\":3066993,\"description\":\"Se subió el artifact sda-sqlite-backup-${{ github.run_id }}: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}]}" "$DISCORD_WEBHOOK_URL"
+          fi
+
       - name: Notificar error en Discord
         if: failure()
         env:
