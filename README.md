@@ -58,18 +58,21 @@ En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<no
 
 Todas las salidas también se snapshotean diariamente en `data/processed/sda.sqlite` (una tabla por tab de Sheets, con columna `fecha_carga`).
 
-`master` (`.github/workflows/master.yml`) corre los 6 pipelines en secuencia en un único job y sube `sda.sqlite` como artifact al final.
+Los 6 pipelines se disparan **de forma independiente** (en el orden que se quiera, vía Shortcuts) — no hay un workflow que los corra todos en un único job. Cada uno, además de escribir a Sheets, restaura y actualiza un cache compartido de `sda.sqlite` para que el historial se vaya acumulando entre corridas. `backup` (`.github/workflows/backup.yml`) es un workflow liviano, sin ninguna extracción, que se dispara al final de la secuencia diaria para restaurar ese cache acumulado y subirlo como artifact de respaldo.
 
 ```mermaid
 flowchart TD
-    Start([workflow_dispatch /<br/>repository_dispatch]) --> Amb[Ambulatorio<br/>E→S→T→L]
-    Amb --> Farm[Farmvac<br/>E→S→T→L]
-    Farm --> Prov[Provisión<br/>E→S→T→L]
-    Prov --> Disc[Discapacidad<br/>E→S→T→L]
-    Disc --> Prot[Prótesis<br/>E→S→T→L]
-    Prot --> Int[Internaciones<br/>E→S→T→L]
-    Int --> Artifact[Subir sda.sqlite<br/>como artifact]
-    Artifact --> End([Fin])
+    subgraph Pipelines individuales, en cualquier orden
+        Amb[Ambulatorio<br/>E→S→T→L]
+        Farm[Farmvac<br/>E→S→T→L]
+        Prov[Provisión<br/>E→S→T→L]
+        Disc[Discapacidad<br/>E→S→T→L]
+        Prot[Prótesis<br/>E→S→T→L]
+        Int[Internaciones<br/>E→S→T→L]
+    end
+
+    Amb & Farm & Prov & Disc & Prot & Int --> Cache[(cache sda.sqlite<br/>acumulado)]
+    Cache --> Backup[backup.yml<br/>restaura + sube artifact]
 
     Amb -.error.-> Discord[Discord webhook]
     Farm -.error.-> Discord
@@ -94,7 +97,7 @@ scripts/
 data/
   raw/          # parquets de staging (uno por pipeline)
   processed/    # sda.sqlite — snapshots históricos
-.github/workflows/  # un workflow por pipeline + master.yml
+.github/workflows/  # un workflow por pipeline + backup.yml
 main.ipynb      # notebook para correr todos los pipelines en local
 ```
 
@@ -158,15 +161,18 @@ Cada pipeline tiene su propio workflow en `.github/workflows/`, disparable manua
 | `protesis.yml` | `actualizar-protesis` |
 | `provision.yml` | `actualizar-provision` |
 | `internaciones.yml` | `actualizar-internaciones` |
-| `master.yml` | `actualizar-todo` |
 | `check_dw.yml` | `check-dw` |
+| `backup.yml` | `backup-sqlite` |
 
-Cada job:
+Cada job de pipeline:
 1. Instala dependencias y restaura un cache del parquet (best-effort).
-2. Escribe `credentials.json` desde el secret `GOOGLE_CREDENTIALS`.
-3. Corre el extract+stage (E→S) usando `MSTR_USER` / `MSTR_PASSWORD`.
-4. Corre `python src/pipelines/<nombre>.py` (T→L), que escribe a Sheets/SQLite y notifica éxito por Discord.
-5. Si falla cualquier paso, notifica el error a Discord con un link al run.
+2. Restaura el cache acumulado de `data/processed/sda.sqlite`.
+3. Escribe `credentials.json` desde el secret `GOOGLE_CREDENTIALS`.
+4. Corre el extract+stage (E→S) usando `MSTR_USER` / `MSTR_PASSWORD`.
+5. Corre `python src/pipelines/<nombre>.py` (T→L), que escribe a Sheets/SQLite y notifica éxito por Discord. Al terminar el job, el cache guarda el `sda.sqlite` actualizado.
+6. Si falla cualquier paso, notifica el error a Discord con un link al run.
+
+`backup.yml` no corre ninguno de estos pasos: solo restaura el cache de `sda.sqlite` y lo sube como artifact. Conviene dispararlo al final de la secuencia diaria de pipelines para tener un respaldo descargable del historial acumulado.
 
 ### Secrets requeridos
 
@@ -186,6 +192,8 @@ Cada job:
 (IDs de Sheets de entrada/auxiliares en cada módulo de `src/extract/`.)
 
 > **Nota**: el cache de parquet en CI está keyado por fecha UTC (`YYYYMMDD`), no por `github.run_id`. Esto significa que si un mismo pipeline se vuelve a disparar el mismo día, reusa el parquet cacheado y se saltea la extracción desde MicroStrategy; un día nuevo siempre fuerza una extracción fresca.
+>
+> El cache de `sda.sqlite`, en cambio, está keyado por fecha **y** `github.run_id` (`sqlite-<fecha>-<run_id>`, con `restore-keys: sqlite-`), así que nunca hay un hit exacto: cada corrida siempre restaura el estado más reciente y siempre guarda sus cambios de vuelta, permitiendo que el historial se acumule sin importar cuántas veces se corra un pipeline en el día.
 
 ## Resiliencia ante errores transitorios
 
