@@ -46,8 +46,13 @@ def extract_resto(conn=None) -> pd.DataFrame:
         'Subrubro Prestacion Gerencia Estrategica': 'Subrubro',
         'Zona Direccion Comercial Asociado':        'Zona DCA',
         'Subzona Direccion Comercial Asociado':     'Subzona DCA',
+        'Prestacion@ID':                            'Prestacion ID',
+        'Prestacion@DESC':                          'Prestacion DESC',
     }, inplace=True)
-    return df
+
+    orden = ['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo', 'Prestacion ID', 'Prestacion DESC']
+    orden += [c for c in df.columns if c not in orden]
+    return df[orden]
 
 
 def extract_ne_amb() -> pd.DataFrame:
