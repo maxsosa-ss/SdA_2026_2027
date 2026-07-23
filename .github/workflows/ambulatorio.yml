@@ -27,7 +27,9 @@ jobs:
         id: cache-parquet
         uses: actions/cache@v4
         with:
-          path: data/raw/ambulatorio.parquet
+          path: |
+            data/raw/ambulatorio.parquet
+            data/raw/ambulatorio_resto.parquet
           key: ambulatorio-parquet-${{ steps.vars.outputs.today }}
           restore-keys: ambulatorio-parquet-
 
@@ -48,9 +50,10 @@ jobs:
           MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
         run: |
           PYTHONPATH=. python -c "
-          from src.extract.ambulatorio import extract_u6m;
-          from src.stage.ambulatorio import stage_u6m;
-          stage_u6m(extract_u6m())"
+          from src.extract.ambulatorio import extract_u6m, extract_resto;
+          from src.stage.ambulatorio import stage_u6m, stage_resto;
+          stage_u6m(extract_u6m());
+          stage_resto(extract_resto())"
 
       - name: Ejecutar pipeline (T -> L)
         env:

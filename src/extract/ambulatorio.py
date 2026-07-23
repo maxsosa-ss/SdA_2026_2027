@@ -7,6 +7,7 @@ from src.utils.gc_functions import leer_tabla_df
 
 _REPORT_COMPLETE = '6FFDEA91D9424E4D3C903E800B8C8D52'
 _REPORT_U6M      = '1C7CE23E3342D3623628C6837F197F57'
+_REPORT_RESTO    = 'DCF6C6095B48C10091CCCCB2028F4767'
 
 _SHEET_AUX      = '1l9dP8MK3GN8D1RymJ8Q8u-SRkrQPKmN-4wKChMBpYHQ'
 _SHEET_NE       = '1RV39I7zo0rSBgDhmGHjaEPt0eBnLfle1L0XpvLIHI9M'
@@ -34,6 +35,19 @@ def extract_complete(conn=None) -> pd.DataFrame:
 def extract_u6m(conn=None) -> pd.DataFrame:
     conn = conn or get_mstr_conn()
     return _fetch(_REPORT_U6M, conn)
+
+
+def extract_resto(conn=None) -> pd.DataFrame:
+    conn = conn or get_mstr_conn()
+    df = _fetch(_REPORT_RESTO, conn)
+    df.rename(columns={
+        'Periodo ID':                              'Periodo',
+        'Rubro Prestacion Gerencia Estrategica':    'Rubro',
+        'Subrubro Prestacion Gerencia Estrategica': 'Subrubro',
+        'Zona Direccion Comercial Asociado':        'Zona DCA',
+        'Subzona Direccion Comercial Asociado':     'Subzona DCA',
+    }, inplace=True)
+    return df
 
 
 def extract_ne_amb() -> pd.DataFrame:

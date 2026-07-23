@@ -3,6 +3,7 @@ from pathlib import Path
 
 _DATA_PATH = Path(__file__).parents[2] / 'data' / 'raw'
 _FILE      = _DATA_PATH / 'ambulatorio.parquet'
+_FILE_RESTO = _DATA_PATH / 'ambulatorio_resto.parquet'
 _DATE_COL  = 'Fecha Proceso Autorización'
 
 
@@ -48,3 +49,17 @@ def read() -> pd.DataFrame:
             f"El archivo '{_FILE.name}' no existe. Corré stage_complete() primero."
         )
     return pd.read_parquet(_FILE)
+
+
+def stage_resto(df: pd.DataFrame) -> None:
+    _DATA_PATH.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(_FILE_RESTO, index=False)
+    print(f'✅ ambulatorio (resto): {len(df)} registros en {_FILE_RESTO.name}')
+
+
+def read_resto() -> pd.DataFrame:
+    if not _FILE_RESTO.exists():
+        raise RuntimeError(
+            f"El archivo '{_FILE_RESTO.name}' no existe. Corré extract_resto() y stage_resto() primero."
+        )
+    return pd.read_parquet(_FILE_RESTO)

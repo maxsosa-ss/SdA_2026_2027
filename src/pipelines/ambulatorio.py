@@ -1,13 +1,14 @@
-from src.stage.ambulatorio import read as stage_read, stage_u6m
-from src.extract.ambulatorio import extract_u6m, extract_ne_amb, extract_feriados, extract_val_amb
+from src.stage.ambulatorio import read as stage_read, stage_u6m, stage_resto, read_resto as stage_read_resto
+from src.extract.ambulatorio import extract_u6m, extract_ne_amb, extract_feriados, extract_val_amb, extract_resto
 from src.transform.ambulatorio import preparar, proyeccion_diaria, proyeccion_ejercicio
-from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio
+from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio, load_resto
 from src.utils.discord import notify_success, notify_error
 
 
 def run():
     """E→S→T→L completo (uso local)."""
     stage_u6m(extract_u6m())
+    stage_resto(extract_resto())
     _run_tl()
 
 
@@ -17,6 +18,7 @@ def _run_tl():
     ne_amb  = extract_ne_amb()
     cal     = extract_feriados()
     val_amb = extract_val_amb()
+    resto   = stage_read_resto()
 
     df = preparar(df_raw)
 
@@ -36,12 +38,14 @@ def _run_tl():
 
     load_proyeccion_diaria(proyamb_dia)
     load_proyeccion_ejercicio(proyamb_ej)
+    load_resto(resto)
 
     notify_success(
         'Ambulatorio actualizado',
         fields=[
             {'name': 'Seguimiento diario',  'value': f'{len(proyamb_dia):,} filas', 'inline': True},
             {'name': 'General (ejercicio)', 'value': f'{len(proyamb_ej):,} filas',  'inline': True},
+            {'name': 'Resto',               'value': f'{len(resto):,} filas',       'inline': True},
         ],
     )
 
