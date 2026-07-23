@@ -48,7 +48,7 @@ En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<no
 
 | Pipeline | Reportes / fuentes | Tabs escritos en Google Sheets |
 |---|---|---|
-| `ambulatorio` | Report Ambulatorio (MSTR) + NE_amb, feriados, val_amb (Sheets) | `amb_seg_diario`, `amb_general` |
+| `ambulatorio` | Reports Ambulatorio + Resto (MSTR) + NE_amb, feriados, val_amb (Sheets) | `amb_seg_diario`, `amb_general`, `amb_resto` |
 | `farmvac` | Reports Farmacia + Vacunas (MSTR) + NE_farm (Sheets) | `farmvac_seg_diario`, `farmvac_gral_Q`, `farmvac_gral_imp`, `farm_proy_imp_diario` |
 | `discapacidad` | Report Discapacidad (MSTR) + tabla auxiliar de mapeo | `disca_gral` |
 | `protesis` | Report Prótesis (MSTR) | `protesis_gral` |
@@ -95,7 +95,7 @@ src/
 scripts/
   check_dw.py   # chequea última actualización de procesos del DW
 data/
-  raw/          # parquets de staging (uno por pipeline)
+  raw/          # parquets de staging (uno por pipeline; ambulatorio tiene además ambulatorio_resto.parquet)
   processed/    # sda.sqlite — snapshots históricos
 .github/workflows/  # un workflow por pipeline + backup.yml
 main.ipynb      # notebook para correr todos los pipelines en local
@@ -132,9 +132,10 @@ O abrir `main.ipynb`, que tiene una celda por pipeline llamando a `run()`.
 ```bash
 # Sólo re-extraer y stagear el historial reciente (E→S)
 PYTHONPATH=. python -c "
-from src.extract.ambulatorio import extract_u6m
-from src.stage.ambulatorio import stage_u6m
-stage_u6m(extract_u6m())"
+from src.extract.ambulatorio import extract_u6m, extract_resto
+from src.stage.ambulatorio import stage_u6m, stage_resto
+stage_u6m(extract_u6m())
+stage_resto(extract_resto())"
 
 # Sólo verificar el estado del DW
 PYTHONPATH=. python scripts/check_dw.py
