@@ -4,9 +4,9 @@ from mstrio.project_objects import Report
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from src.utils.connections import get_mstr_conn
 
-_R_QUIR_QTY_VAL = 'A4E395151E40DAF4094B15AD7B36C4A5'
+_R_QUIR_QTY_VAL = '958061A8F74E38D4A019EDAF1F12426A'
 _R_QUIR_NE_PTTO = 'EA2159D88A49B2D8E2D8F7A78A1FF672'
-_R_SAN_QTY      = 'C71DAF365641E079133675B4BA255443'
+_R_SAN_QTY      = 'E44FF0D61F4904263C5EE4A9B6977657'
 _R_SAN_NE       = '14772FE4A2472411C34CF3B8934268BA'
 
 
