@@ -42,7 +42,6 @@ def extract_sanatoriales(conn=None) -> pd.DataFrame:
     qty = _fetch(_R_SAN_QTY, conn)
     qty.rename(columns={
         'Periodo ID': 'Periodo',
-        'Días de Internación': 'Dias Internación',
         'Recuento de Ordenes + Pendientes': 'Cantidad Internaciones',
     }, inplace=True)
 
