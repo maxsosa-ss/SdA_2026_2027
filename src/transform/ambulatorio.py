@@ -204,38 +204,23 @@ def proyeccion_diaria(
     return result[cols]
 
 
-def proyeccion_ejercicio(
+def _desvio_por_grupo(
     df: pd.DataFrame,
     proyamb_dia: pd.DataFrame,
     ne_amb: pd.DataFrame,
-    val_amb: pd.DataFrame,
-    hoy: pd.Timestamp = None,
-    periodo_actual: str = None,
-    col_qty: str = 'Q',
+    hoy: pd.Timestamp,
+    periodo_actual: str,
+    col_qty: str,
 ) -> pd.DataFrame:
     """
-    Proyección del ejercicio (todos los periodos) de ambulatorio.
-
-    Parámetros
-    ----------
-    df : DataFrame ambulatorio ya mapeado, con columnas:
-         Fecha, Rubro PPTO, Subrubro PPTO, Zona DCA, Subzona DCA, Periodo, {col_qty}
-    proyamb_dia : salida de proyeccion_diaria() — se usa el último Acumulado Proyectado por Subrubro
-    ne_amb : DataFrame con columnas Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Nivel Esperado
-    val_amb : DataFrame con columnas Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Conversor, VU, M2
-    hoy : fecha de referencia; default = fecha_hoy de utils.dates
-    periodo_actual : str 'YYYYMM'; default = p_actual de utils.dates
-    col_qty : nombre de la columna de cantidades en df
+    Nivel Esperado / Aut. Proyectadas / Prestaciones por Periodo/Rubro/Subrubro/Zona/Subzona.
 
     Retorna
     -------
     DataFrame con columnas:
-        Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Nivel Esperado,
-        Prestaciones, Aut. Proyectadas, Faltante, Dif. valorizada
+        Periodo, Rubro, Subrubro, Zona DCA, Subzona DCA, Nivel Esperado,
+        Aut. Proyectadas, Prestaciones
     """
-    hoy = hoy or fecha_hoy.normalize()
-    periodo_actual = periodo_actual or p_actual
-
     # --- Prestaciones reales agrupadas ---
     prestaciones = (
         df.groupby(['Rubro PPTO', 'Subrubro PPTO', 'Zona DCA', 'Subzona DCA', 'Periodo'], as_index=False)
@@ -295,11 +280,45 @@ def proyeccion_ejercicio(
 
     result['Aut. Proyectadas'] = result['Aut. Proyectadas'].fillna(0).infer_objects(copy=False).astype(int)
 
-    # --- Desvío y valorización ---
-    desvio = (
+    return (
         result.groupby(['Periodo', 'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'], as_index=False)
         [['Nivel Esperado', 'Aut. Proyectadas', 'Prestaciones']].sum()
     )
+
+
+def proyeccion_ejercicio(
+    df: pd.DataFrame,
+    proyamb_dia: pd.DataFrame,
+    ne_amb: pd.DataFrame,
+    val_amb: pd.DataFrame,
+    hoy: pd.Timestamp = None,
+    periodo_actual: str = None,
+    col_qty: str = 'Q',
+) -> pd.DataFrame:
+    """
+    Proyección del ejercicio (todos los periodos) de ambulatorio.
+
+    Parámetros
+    ----------
+    df : DataFrame ambulatorio ya mapeado, con columnas:
+         Fecha, Rubro PPTO, Subrubro PPTO, Zona DCA, Subzona DCA, Periodo, {col_qty}
+    proyamb_dia : salida de proyeccion_diaria() — se usa el último Acumulado Proyectado por Subrubro
+    ne_amb : DataFrame con columnas Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Nivel Esperado
+    val_amb : DataFrame con columnas Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Conversor, VU, M2
+    hoy : fecha de referencia; default = fecha_hoy de utils.dates
+    periodo_actual : str 'YYYYMM'; default = p_actual de utils.dates
+    col_qty : nombre de la columna de cantidades en df
+
+    Retorna
+    -------
+    DataFrame con columnas:
+        Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Nivel Esperado,
+        Prestaciones, Aut. Proyectadas, Faltante, Dif. valorizada
+    """
+    hoy = hoy or fecha_hoy.normalize()
+    periodo_actual = periodo_actual or p_actual
+
+    desvio = _desvio_por_grupo(df, proyamb_dia, ne_amb, hoy, periodo_actual, col_qty)
     desvio['Desvio Proyectado'] = (
         (desvio['Aut. Proyectadas'] / desvio['Nivel Esperado']) - 1
     ).round(6)
@@ -342,5 +361,77 @@ def proyeccion_ejercicio(
     cols_out = [
         'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo',
         'Nivel Esperado', 'Prestaciones', 'Aut. Proyectadas', 'Faltante', 'Dif. valorizada',
+    ]
+    return valorizado[cols_out]
+
+
+_PERIODO_MEDIDAS_DESDE = '202607'
+
+
+def medidas(
+    df: pd.DataFrame,
+    proyamb_dia: pd.DataFrame,
+    ne_amb: pd.DataFrame,
+    val_amb: pd.DataFrame,
+    hoy: pd.Timestamp = None,
+    periodo_actual: str = None,
+    col_qty: str = 'Q',
+) -> pd.DataFrame:
+    """
+    Valorización económica (Real, Proyectado y Esperado) por Periodo/Rubro/Subrubro/Zona/Subzona,
+    desde el periodo 202607 hasta periodo_actual (progresivo mes a mes).
+
+    Parámetros
+    ----------
+    df : DataFrame ambulatorio ya mapeado, con columnas:
+         Fecha, Rubro PPTO, Subrubro PPTO, Zona DCA, Subzona DCA, Periodo, {col_qty}
+    proyamb_dia : salida de proyeccion_diaria() — se usa el último Acumulado Proyectado por Subrubro
+    ne_amb : DataFrame con columnas Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Nivel Esperado
+    val_amb : DataFrame con columnas Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Conversor, VU, M2
+    hoy : fecha de referencia; default = fecha_hoy de utils.dates
+    periodo_actual : str 'YYYYMM'; default = p_actual de utils.dates
+    col_qty : nombre de la columna de cantidades en df
+
+    Retorna
+    -------
+    DataFrame con columnas:
+        Periodo, Rubro, Subrubro, Zona DCA, Subzona DCA,
+        Real Acumulado, Proyectado Acumulado, Esperado Acumulado
+    """
+    hoy = hoy or fecha_hoy.normalize()
+    periodo_actual = periodo_actual or p_actual
+
+    desvio = _desvio_por_grupo(df, proyamb_dia, ne_amb, hoy, periodo_actual, col_qty)
+
+    # El Conversor/VU se toma siempre del periodo anterior a periodo_actual,
+    # no del Periodo propio de cada fila (val_amb del mes en curso puede no estar cargado aún).
+    periodo_anterior = (
+        pd.to_datetime(str(periodo_actual), format='%Y%m') - pd.DateOffset(months=1)
+    ).strftime('%Y%m')
+    val_amb_anterior = val_amb.loc[val_amb['Periodo'].astype(str) == periodo_anterior]
+
+    valorizado = desvio.merge(
+        val_amb_anterior.drop(columns='Periodo'),
+        on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
+        how='left',
+    )
+    valorizado['Real Acumulado'] = (
+        valorizado['Conversor'] * valorizado['VU'] * valorizado['Prestaciones']
+    ).fillna(0)
+    valorizado['Proyectado Acumulado'] = (
+        valorizado['Conversor'] * valorizado['VU'] * valorizado['Aut. Proyectadas']
+    ).fillna(0)
+    valorizado['Esperado Acumulado'] = (
+        valorizado['Conversor'] * valorizado['VU'] * valorizado['Nivel Esperado']
+    ).fillna(0)
+
+    periodo_str = valorizado['Periodo'].astype(str)
+    valorizado = valorizado.loc[
+        (periodo_str >= _PERIODO_MEDIDAS_DESDE) & (periodo_str <= str(periodo_actual))
+    ]
+
+    cols_out = [
+        'Periodo', 'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA',
+        'Real Acumulado', 'Proyectado Acumulado', 'Esperado Acumulado',
     ]
     return valorizado[cols_out]

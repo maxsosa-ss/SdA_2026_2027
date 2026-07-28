@@ -1,7 +1,7 @@
 from src.stage.ambulatorio import read as stage_read, stage_u6m, stage_resto, read_resto as stage_read_resto
 from src.extract.ambulatorio import extract_u6m, extract_ne_amb, extract_feriados, extract_val_amb, extract_resto
-from src.transform.ambulatorio import preparar, proyeccion_diaria, proyeccion_ejercicio
-from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio, load_resto
+from src.transform.ambulatorio import preparar, proyeccion_diaria, proyeccion_ejercicio, medidas
+from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio, load_resto, load_medidas
 from src.utils.discord import notify_success, notify_error
 
 
@@ -35,10 +35,17 @@ def _run_tl():
         ne_amb,
         val_amb=val_amb,
     )
+    amb_medidas = medidas(
+        df,
+        proyamb_dia,
+        ne_amb,
+        val_amb=val_amb,
+    )
 
     load_proyeccion_diaria(proyamb_dia)
     load_proyeccion_ejercicio(proyamb_ej)
     load_resto(resto)
+    load_medidas(amb_medidas)
 
     notify_success(
         'Ambulatorio actualizado',
@@ -46,6 +53,7 @@ def _run_tl():
             {'name': 'Seguimiento diario',  'value': f'{len(proyamb_dia):,} filas', 'inline': True},
             {'name': 'General (ejercicio)', 'value': f'{len(proyamb_ej):,} filas',  'inline': True},
             {'name': 'Resto',               'value': f'{len(resto):,} filas',       'inline': True},
+            {'name': 'Medidas',             'value': f'{len(amb_medidas):,} filas', 'inline': True},
         ],
     )
 
