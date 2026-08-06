@@ -286,6 +286,46 @@ def _desvio_por_grupo(
     )
 
 
+def _merge_val_amb(desvio: pd.DataFrame, val_amb: pd.DataFrame) -> pd.DataFrame:
+    """
+    VU y M2 se toman del Periodo propio de cada fila (valores que se actualizan mes a mes).
+    Conversor se toma del mes calendario anterior al Periodo propio de cada fila (mes-1
+    rolling: Mayo usa el Conversor de Abril, Junio el de Mayo, etc.). Si no hay Conversor
+    cargado para ese mes-1 (p.ej. el primer periodo de la serie, sin dato del mes previo),
+    se usa como fallback el Conversor del propio Periodo de la fila.
+    """
+    valorizado = desvio.merge(
+        val_amb[['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo', 'VU', 'M2']],
+        on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo'],
+        how='left',
+    )
+
+    valorizado['_Periodo_prev'] = (
+        pd.to_datetime(valorizado['Periodo'].astype(str), format='%Y%m') - pd.DateOffset(months=1)
+    ).dt.strftime('%Y%m')
+
+    conv_prev = val_amb[['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo', 'Conversor']].rename(
+        columns={'Periodo': '_Periodo_prev'}
+    )
+    valorizado = valorizado.merge(
+        conv_prev,
+        on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', '_Periodo_prev'],
+        how='left',
+    )
+
+    conv_propio = val_amb[['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo', 'Conversor']].rename(
+        columns={'Conversor': '_Conversor_propio'}
+    )
+    valorizado = valorizado.merge(
+        conv_propio,
+        on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo'],
+        how='left',
+    )
+    valorizado['Conversor'] = valorizado['Conversor'].fillna(valorizado['_Conversor_propio'])
+    valorizado = valorizado.drop(columns=['_Periodo_prev', '_Conversor_propio'])
+    return valorizado
+
+
 def proyeccion_ejercicio(
     df: pd.DataFrame,
     proyamb_dia: pd.DataFrame,
@@ -326,18 +366,7 @@ def proyeccion_ejercicio(
     desvio['Faltante'] = desvio['Aut. Proyectadas'] - desvio['Prestaciones']
 
     if val_amb is not None:
-        # El Conversor/VU/M2 se toma siempre del periodo anterior a periodo_actual,
-        # no del Periodo propio de cada fila (val_amb del mes en curso puede no estar cargado aún).
-        periodo_anterior = (
-            pd.to_datetime(str(periodo_actual), format='%Y%m') - pd.DateOffset(months=1)
-        ).strftime('%Y%m')
-        val_amb_anterior = val_amb.loc[val_amb['Periodo'].astype(str) == periodo_anterior]
-
-        valorizado = desvio.merge(
-            val_amb_anterior.drop(columns='Periodo'),
-            on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
-            how='left',
-        )
+        valorizado = _merge_val_amb(desvio, val_amb)
         valorizado['Dif. valorizada Periodo Prestación'] = (
             valorizado['Conversor'] * valorizado['VU']
             * (valorizado['Aut. Proyectadas'] - valorizado['Nivel Esperado'])
@@ -403,18 +432,7 @@ def medidas(
 
     desvio = _desvio_por_grupo(df, proyamb_dia, ne_amb, hoy, periodo_actual, col_qty)
 
-    # El Conversor/VU se toma siempre del periodo anterior a periodo_actual,
-    # no del Periodo propio de cada fila (val_amb del mes en curso puede no estar cargado aún).
-    periodo_anterior = (
-        pd.to_datetime(str(periodo_actual), format='%Y%m') - pd.DateOffset(months=1)
-    ).strftime('%Y%m')
-    val_amb_anterior = val_amb.loc[val_amb['Periodo'].astype(str) == periodo_anterior]
-
-    valorizado = desvio.merge(
-        val_amb_anterior.drop(columns='Periodo'),
-        on=['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA'],
-        how='left',
-    )
+    valorizado = _merge_val_amb(desvio, val_amb)
     valorizado['Real Acumulado'] = (
         valorizado['Conversor'] * valorizado['VU'] * valorizado['Prestaciones']
     ).fillna(0)
