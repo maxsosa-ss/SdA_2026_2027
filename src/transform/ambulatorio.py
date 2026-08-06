@@ -434,13 +434,13 @@ def medidas(
 
     valorizado = _merge_val_amb(desvio, val_amb)
     valorizado['Real Acumulado'] = (
-        valorizado['Conversor'] * valorizado['VU'] * valorizado['Prestaciones']
+        valorizado['Conversor'] * valorizado['VU'] * valorizado['Prestaciones']*valorizado['M2']
     ).fillna(0)
     valorizado['Proyectado Acumulado'] = (
-        valorizado['Conversor'] * valorizado['VU'] * valorizado['Aut. Proyectadas']
+        valorizado['Conversor'] * valorizado['VU'] * valorizado['Aut. Proyectadas']*valorizado['M2']
     ).fillna(0)
     valorizado['Esperado Acumulado'] = (
-        valorizado['Conversor'] * valorizado['VU'] * valorizado['Nivel Esperado']
+        valorizado['Conversor'] * valorizado['VU'] * valorizado['Nivel Esperado']*valorizado['M2']
     ).fillna(0)
 
     periodo_str = valorizado['Periodo'].astype(str)
