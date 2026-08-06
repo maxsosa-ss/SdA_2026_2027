@@ -48,7 +48,7 @@ En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<no
 
 | Pipeline | Reportes / fuentes | Tabs escritos en Google Sheets |
 |---|---|---|
-| `ambulatorio` | Reports Ambulatorio + Resto (MSTR) + NE_amb, feriados, val_amb (Sheets) | `amb_seg_diario`, `amb_general`, `amb_resto` |
+| `ambulatorio` | Reports Ambulatorio + Resto (MSTR) + NE_amb, feriados, val_amb (Sheets) | `amb_seg_diario`, `amb_general`, `amb_resto`, `amb_medidas` |
 | `farmvac` | Reports Farmacia + Vacunas (MSTR) + NE_farm (Sheets) | `farmvac_seg_diario`, `farmvac_gral_Q`, `farmvac_gral_imp`, `farm_proy_imp_diario` |
 | `discapacidad` | Report Discapacidad (MSTR) + tabla auxiliar de mapeo | `disca_gral` |
 | `protesis` | Report Prótesis (MSTR) | `protesis_gral` |
