@@ -52,7 +52,7 @@ En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<no
 | `farmvac` | Reports Farmacia + Vacunas (MSTR) + NE_farm (Sheets) | `farmvac_seg_diario`, `farmvac_gral_Q`, `farmvac_gral_imp`, `farm_proy_imp_diario` |
 | `discapacidad` | Report Discapacidad (MSTR) + tabla auxiliar de mapeo | `disca_gral` |
 | `protesis` | Report Prótesis (MSTR) | `protesis_gral` |
-| `provision` | Reports Provisión + Provisión diario (MSTR) + NE_provision (Sheets) | `prov_gral`, `prov_diario` |
+| `provision` | Reports Provisión + Provisión diario + NC Droguerías (MSTR) + NE_provision (Sheets) | `prov_gral`, `prov_diario`, `NC` |
 | `internaciones` | Reports Sanatorial + Quirúrgicas (MSTR) | `sanatorial`, `quirurgicas`, `consolidado_sanatorial`, `consolidado_quirurgicas` |
 | `check_dw` *(no es E→S→T→L)* | Tabla de control de procesos del DW + cubos de MicroStrategy (`fetch_cubos_info`) | — (notifica a Discord en **dos mensajes separados**: estado del DW y estado de cubos) |
 

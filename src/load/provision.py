@@ -3,8 +3,13 @@ from src.utils.gc_functions import escribir_tabla_df
 from src.load.sqlite import save_snapshot
 
 _SHEET_OUTPUT  = '1p7bvTZtdYbDwh4YYiLbE1knIicBlU6VeWmq1pX2YNiA'
-_RANGO_GRAL    = 'prov_gral!A1'
-_RANGO_DIARIO  = 'prov_diario!A1'
+# Rangos deliberadamente más anchos que las columnas que efectivamente
+# escribe la pipeline, para que clear_first=True pise cualquier columna
+# vieja con fórmulas manuales que haya quedado más a la derecha (p.ej.
+# Auxiliar/Proyección Corregida/Día Semana/Periodo de versiones anteriores).
+_RANGO_GRAL    = 'prov_gral!A1:Z1000'
+_RANGO_DIARIO  = 'prov_diario!A1:Z1000'
+_RANGO_NC      = 'NC!A1:Z1000'
 
 
 def load_prov_gral(df: pd.DataFrame) -> None:
@@ -15,6 +20,11 @@ def load_prov_gral(df: pd.DataFrame) -> None:
 def load_prov_diario(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_DIARIO, _prepare(df), clear_first=True)
     save_snapshot(df, 'prov_diario')
+
+
+def load_prov_nc(df: pd.DataFrame) -> None:
+    escribir_tabla_df(_SHEET_OUTPUT, _RANGO_NC, _prepare(df), clear_first=True)
+    save_snapshot(df, 'prov_nc')
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from src.utils.dates import fecha_hoy
+from src.utils.dates import fecha_hoy, p_actual
 
 _ACREEDOR_ALIMENTOS = [
     '785833', '719848', '108077', '616554', '203401', '192794',
@@ -62,15 +62,26 @@ def prov_gral(df: pd.DataFrame, ne_provision: pd.DataFrame) -> pd.DataFrame:
     return result[cols]
 
 
-def prov_diario(df: pd.DataFrame, hoy: pd.Timestamp = None, feriados: dict = None) -> pd.DataFrame:
+def prov_diario(
+    df: pd.DataFrame,
+    hoy: pd.Timestamp = None,
+    feriados: dict = None,
+    ne_gral: pd.DataFrame = None,
+) -> pd.DataFrame:
     """
     Detalle diario de Droguería con proyección lineal para los días hábiles
     restantes del mes. Se calcula por separado para Ambulatorio e Internación.
 
     Proyección diaria = acumulado_real / días_hábiles_con_datos
 
+    `ne_gral`, si se pasa, es el resultado de `prov_gral()` (columnas
+    'Periodo', 'Origen', '$ Nivel Esperado') usado para completar la
+    columna 'Nivel Esperado' del período corriente.
+
     Retorna DataFrame con columnas:
-        Fecha, Origen Autorización, Autorizaciones $, Autorizaciones QTY, Proyección
+        Fecha, Origen Autorización, Autorizaciones $, Autorizaciones QTY,
+        Proyección, Acumulado Aut. $, Acumulado Proy. $, Nivel Esperado,
+        Proyección Importe
     """
     hoy = hoy or fecha_hoy.normalize()
 
@@ -171,9 +182,41 @@ def prov_diario(df: pd.DataFrame, hoy: pd.Timestamp = None, feriados: dict = Non
     merged = merged.fillna(0)
     merged = (
         merged.drop(columns=['Dia_Habil_Mes'])
-        .sort_values(['Fecha', 'Origen Autorización'])
+        .sort_values(['Origen Autorización', 'Fecha'])
         .reset_index(drop=True)
     )
 
-    cols = ['Fecha', 'Origen Autorización', 'Autorizaciones $', 'Autorizaciones QTY', 'Proyección']
+    # --- Proyección corregida (excluye fines de semana Y feriados) ---
+    es_no_habil = (merged['Fecha'].dt.dayofweek >= 5) | (merged['Fecha'].isin(feriados_ar))
+    proy_corr = merged['Proyección'].where(~es_no_habil, 0.0)
+
+    # --- Acumulados por Origen ---
+    cum_real = merged.groupby('Origen Autorización')['Autorizaciones $'].cumsum()
+    cum_proy = proy_corr.groupby(merged['Origen Autorización']).cumsum()
+
+    es_futuro = merged['Fecha'] >= hoy
+    merged['Acumulado Aut. $']  = cum_real.where(~es_futuro)
+    merged['Acumulado Proy. $'] = (cum_real + cum_proy).where(es_futuro)
+
+    # --- Proyección Importe: total de fin de mes por Origen (real + corregida) ---
+    totales_mes = (merged['Autorizaciones $'] + proy_corr).groupby(merged['Origen Autorización']).transform('sum')
+    merged['Proyección Importe'] = totales_mes
+
+    # --- Nivel Esperado del período corriente, tomado de prov_gral ---
+    if ne_gral is not None and not ne_gral.empty:
+        ne_actual = (
+            ne_gral.loc[ne_gral['Periodo'] == p_actual]
+            .drop_duplicates('Origen')
+            .set_index('Origen')['$ Nivel Esperado']
+        )
+        merged['Nivel Esperado'] = merged['Origen Autorización'].map(ne_actual)
+    else:
+        merged['Nivel Esperado'] = np.nan
+
+    merged = merged.sort_values(['Fecha', 'Origen Autorización']).reset_index(drop=True)
+
+    cols = [
+        'Fecha', 'Origen Autorización', 'Autorizaciones $', 'Autorizaciones QTY', 'Proyección',
+        'Acumulado Aut. $', 'Acumulado Proy. $', 'Nivel Esperado', 'Proyección Importe',
+    ]
     return merged[cols]

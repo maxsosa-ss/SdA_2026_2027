@@ -30,6 +30,7 @@ jobs:
           path: |
             data/raw/provision.parquet
             data/raw/provision_diario.parquet
+            data/raw/provision_nc.parquet
           key: provision-parquet-${{ steps.vars.outputs.today }}
           restore-keys: provision-parquet-
 
@@ -50,10 +51,11 @@ jobs:
           MSTR_PASSWORD: ${{ secrets.MSTR_PASSWORD }}
         run: |
           PYTHONPATH=. python -c "
-          from src.extract.provision import extract_provision, extract_provision_diario;
-          from src.stage.provision import stage, stage_diario;
+          from src.extract.provision import extract_provision, extract_provision_diario, extract_nc;
+          from src.stage.provision import stage, stage_diario, stage_nc;
           stage(extract_provision());
-          stage_diario(extract_provision_diario())"
+          stage_diario(extract_provision_diario());
+          stage_nc(extract_nc())"
 
       - name: Ejecutar pipeline (T -> L)
         env:

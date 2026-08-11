@@ -7,6 +7,7 @@ from src.utils.gc_functions import leer_tabla_df
 
 _REPORT_PROVISION        = 'C41EA844C04CDA01937C65A9DB6E3E86'
 _REPORT_PROVISION_DIARIO = 'B9025BF74B447CED830040BECF1F02DE'
+_REPORT_NC               = '375A58A94D45054EBD97B8AC17F1206F'
 
 _SHEET_NE = '1RV39I7zo0rSBgDhmGHjaEPt0eBnLfle1L0XpvLIHI9M'
 _RANGO_NE = 'NE_provision!A1:D127'
@@ -52,6 +53,22 @@ def extract_provision_diario(conn=None) -> pd.DataFrame:
     df['Autorizaciones $']   = pd.to_numeric(df['Autorizaciones $'],   errors='coerce').fillna(0)
     df['Autorizaciones QTY'] = pd.to_numeric(df['Autorizaciones QTY'], errors='coerce').fillna(0)
     print(f'⚙️ Registros en PROVISION diario: {len(df)}')
+    return df
+
+
+def extract_nc(conn=None) -> pd.DataFrame:
+    conn = conn or get_mstr_conn()
+    df = _fetch(_REPORT_NC, conn)
+    df.rename(columns={
+        'Fecha Proceso Origen Recepcionado': 'Fecha',
+        'Acreedor@ID':                       'Acreedor ID',
+        'Acreedor@DESC':                     'Acreedor DESC',
+    }, inplace=True)
+    df['Periodo']               = df['Periodo'].astype(str).str.strip()
+    df['Fecha']                 = pd.to_datetime(df['Fecha'], errors='coerce')
+    df['Importe Recepcionado']  = pd.to_numeric(df['Importe Recepcionado'], errors='coerce').fillna(0)
+    df = df[['Periodo', 'Fecha', 'Acreedor ID', 'Acreedor DESC', 'Nro Cursograma', 'Importe Recepcionado']]
+    print(f'⚙️ Registros en PROVISION NC: {len(df)}')
     return df
 
 

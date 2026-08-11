@@ -41,6 +41,12 @@ def save_snapshot(df: pd.DataFrame, table_name: str, fecha_carga: pd.Timestamp =
                 f"DELETE FROM {table_name} WHERE fecha_carga = ?",  # noqa: S608
                 (fecha_str,),
             )
+            # Agregar columnas nuevas si el DataFrame trae columnas que la tabla
+            # todavía no tiene (p.ej. tras un cambio de esquema del pipeline).
+            columnas_existentes = {r[1] for r in con.execute(f"PRAGMA table_info({table_name})")}  # noqa: S608
+            for col in snapshot.columns:
+                if col not in columnas_existentes:
+                    con.execute(f'ALTER TABLE {table_name} ADD COLUMN "{col}"')  # noqa: S608
         snapshot.to_sql(table_name, con, if_exists='append', index=False)
 
     print(f'💾 {table_name}: {len(snapshot)} filas guardadas ({fecha_str}) → {_DB_PATH.name}')
