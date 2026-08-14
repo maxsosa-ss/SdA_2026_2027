@@ -11,6 +11,7 @@ _REPORT_NC               = '375A58A94D45054EBD97B8AC17F1206F'
 
 _SHEET_NE = '1RV39I7zo0rSBgDhmGHjaEPt0eBnLfle1L0XpvLIHI9M'
 _RANGO_NE = 'NE_provision!A1:D127'
+_RANGO_NE_NC = 'NE_provisionNC!A1:B60'
 
 
 @retry(
@@ -80,6 +81,20 @@ def extract_ne_provision() -> pd.DataFrame:
     df = leer_tabla_df(_SHEET_NE, _RANGO_NE)
     df['$ Nivel Esperado'] = pd.to_numeric(
         df['$ Nivel Esperado'].astype(str).str.replace(',', '.'),
+        errors='coerce',
+    ).fillna(0)
+    df['Periodo'] = df['Periodo'].astype(str).str.strip()
+    return df
+
+
+def extract_ne_provision_nc() -> pd.DataFrame:
+    """
+    Nivel Esperado de NC para Provisión Droguería.
+    Columnas del tab: Periodo | $ Nivel Esperado NC
+    """
+    df = leer_tabla_df(_SHEET_NE, _RANGO_NE_NC)
+    df['$ Nivel Esperado NC'] = pd.to_numeric(
+        df['$ Nivel Esperado NC'].astype(str).str.replace(',', '.'),
         errors='coerce',
     ).fillna(0)
     df['Periodo'] = df['Periodo'].astype(str).str.strip()

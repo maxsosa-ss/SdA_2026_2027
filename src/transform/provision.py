@@ -220,3 +220,48 @@ def prov_diario(
         'Acumulado Aut. $', 'Acumulado Proy. $', 'Nivel Esperado', 'Proyección Importe',
     ]
     return merged[cols]
+
+
+def prov_drogueria(
+    gral: pd.DataFrame,
+    df_nc: pd.DataFrame,
+    ne_nc: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Resumen de Provisión Droguería por Periodo (Ambulatorio + Internación
+    combinados), con Nivel Esperado, Proyección Importe, e Importe
+    Recepcionado / Nivel Esperado de Notas de Crédito.
+
+    `gral` es el resultado de `prov_gral()` ya enriquecido con la columna
+    'Proyección Importe' (ver `_run_tl()` en el pipeline). `df_nc` es el
+    detalle crudo de NC (ya scopeado a Droguerías en el report de origen).
+    `ne_nc` es el resultado de `extract_ne_provision_nc()`.
+
+    Retorna DataFrame con columnas:
+        Periodo, Autorizaciones QTY, Autorizaciones $, Proyección Importe,
+        $ Nivel Esperado, Importe Recepcionado NC, Nivel Esperado NC
+    """
+    drogueria = gral[gral['Provision AC'] == 'DROGUERIA']
+    agg = (
+        drogueria.groupby('Periodo', as_index=False)
+        [['Autorizaciones QTY', 'Autorizaciones $', 'Proyección Importe', '$ Nivel Esperado']]
+        .sum()
+    )
+
+    nc_periodo = (
+        df_nc.groupby('Periodo', as_index=False)['Importe Recepcionado'].sum()
+        .rename(columns={'Importe Recepcionado': 'Importe Recepcionado NC'})
+    )
+
+    result = agg.merge(nc_periodo, on='Periodo', how='left')
+    ne_nc = ne_nc[['Periodo', '$ Nivel Esperado NC']].rename(
+        columns={'$ Nivel Esperado NC': 'Nivel Esperado NC'}
+    )
+    result = result.merge(ne_nc, on='Periodo', how='left')
+    result = result.fillna(0)
+
+    cols = [
+        'Periodo', 'Autorizaciones QTY', 'Autorizaciones $', 'Proyección Importe',
+        '$ Nivel Esperado', 'Importe Recepcionado NC', 'Nivel Esperado NC',
+    ]
+    return result[cols]

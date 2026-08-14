@@ -1,11 +1,14 @@
-from src.extract.provision import extract_provision, extract_provision_diario, extract_nc, extract_ne_provision
+from src.extract.provision import (
+    extract_provision, extract_provision_diario, extract_nc,
+    extract_ne_provision, extract_ne_provision_nc,
+)
 from src.extract.ambulatorio import extract_feriados
 from src.stage.provision import (
     read as stage_read, read_diario as stage_read_diario, read_nc as stage_read_nc,
     stage, stage_diario, stage_nc,
 )
-from src.transform.provision import prov_gral, prov_diario
-from src.load.provision import load_prov_gral, load_prov_diario, load_prov_nc
+from src.transform.provision import prov_gral, prov_diario, prov_drogueria
+from src.load.provision import load_prov_gral, load_prov_diario, load_prov_nc, load_prov_drogueria
 from src.utils.dates import fecha_hoy, p_actual
 from src.utils.discord import notify_success, notify_error
 
@@ -24,6 +27,7 @@ def _run_tl():
     df_dia = stage_read_diario()
     df_nc  = stage_read_nc()
     ne       = extract_ne_provision()
+    ne_nc    = extract_ne_provision_nc()
     cal      = extract_feriados()
     hoy      = fecha_hoy.normalize()
 
@@ -39,9 +43,12 @@ def _run_tl():
     es_actual = gral['Periodo'] == p_actual
     gral.loc[es_actual, 'Proyección Importe'] = gral.loc[es_actual, 'Origen'].map(diario_totales)
 
+    drogueria = prov_drogueria(gral, df_nc, ne_nc)
+
     load_prov_gral(gral)
     load_prov_diario(diario)
     load_prov_nc(df_nc)
+    load_prov_drogueria(drogueria)
 
     notify_success(
         'Provisión actualizada',
@@ -49,6 +56,7 @@ def _run_tl():
             {'name': 'General (ejercicio)', 'value': f'{len(gral):,} filas',   'inline': True},
             {'name': 'Diario',              'value': f'{len(diario):,} filas', 'inline': True},
             {'name': 'NC',                  'value': f'{len(df_nc):,} filas',  'inline': True},
+            {'name': 'Droguería',           'value': f'{len(drogueria):,} filas', 'inline': True},
         ],
     )
 
