@@ -353,7 +353,7 @@ def proyeccion_ejercicio(
     -------
     DataFrame con columnas:
         Rubro, Subrubro, Zona DCA, Subzona DCA, Periodo, Nivel Esperado,
-        Prestaciones, Aut. Proyectadas, Faltante, Dif. valorizada
+        Prestaciones, Aut. Proyectadas, Faltante, Dif. valorizada, Dif. valorizada total
     """
     hoy = hoy or fecha_hoy.normalize()
     periodo_actual = periodo_actual or p_actual
@@ -367,29 +367,31 @@ def proyeccion_ejercicio(
 
     if val_amb is not None:
         valorizado = _merge_val_amb(desvio, val_amb)
-        valorizado['Dif. valorizada Periodo Prestación'] = (
+        valorizado['Dif. valorizada total'] = (
             valorizado['Conversor'] * valorizado['VU']
             * (valorizado['Aut. Proyectadas'] - valorizado['Nivel Esperado'])
         ).fillna(0)
         valorizado['Dif. valorizada'] = (
-            valorizado['M2'] * valorizado['Dif. valorizada Periodo Prestación']
+            valorizado['M2'] * valorizado['Dif. valorizada total']
         ).fillna(0)
     else:
         valorizado = desvio.copy()
         valorizado['Dif. valorizada'] = 0.0
+        valorizado['Dif. valorizada total'] = 0.0
 
-    # --- Mostrar Faltante / Dif. valorizada solo para periodos anteriores al actual,
-    # y para el actual recién a partir del día 10 (misma lógica que Aut. Proyectadas).
+    # --- Mostrar Faltante / Dif. valorizada / Dif. valorizada total solo para periodos
+    # anteriores al actual, y para el actual recién a partir del día 10 (misma lógica que Aut. Proyectadas).
     # Periodos posteriores al actual no tienen Prestaciones/Aut. Proyectadas reales, así que se ocultan.
     periodo_valorizado = valorizado['Periodo'].astype(str)
     mask_mostrar = (periodo_valorizado < str(periodo_actual)) | (
         (periodo_valorizado == str(periodo_actual)) & (hoy.day > 10)
     )
-    valorizado.loc[~mask_mostrar, ['Faltante', 'Dif. valorizada']] = 0
+    valorizado.loc[~mask_mostrar, ['Faltante', 'Dif. valorizada', 'Dif. valorizada total']] = 0
 
     cols_out = [
         'Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo',
-        'Nivel Esperado', 'Prestaciones', 'Aut. Proyectadas', 'Faltante', 'Dif. valorizada',
+        'Nivel Esperado', 'Prestaciones', 'Aut. Proyectadas', 'Faltante',
+        'Dif. valorizada', 'Dif. valorizada total',
     ]
     return valorizado[cols_out]
 
