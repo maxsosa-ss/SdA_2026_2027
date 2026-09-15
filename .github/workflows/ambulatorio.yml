@@ -52,8 +52,10 @@ jobs:
           PYTHONPATH=. python -c "
           from src.extract.ambulatorio import extract_u6m, extract_resto;
           from src.stage.ambulatorio import stage_u6m, stage_resto;
-          stage_u6m(extract_u6m());
-          stage_resto(extract_resto())"
+          from src.utils.connections import get_mstr_conn;
+          conn = get_mstr_conn();
+          stage_u6m(extract_u6m(conn));
+          stage_resto(extract_resto(conn))"
 
       - name: Ejecutar pipeline (T -> L)
         env:

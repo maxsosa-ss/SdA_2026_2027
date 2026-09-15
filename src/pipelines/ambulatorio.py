@@ -2,13 +2,15 @@ from src.stage.ambulatorio import read as stage_read, stage_u6m, stage_resto, re
 from src.extract.ambulatorio import extract_u6m, extract_ne_amb, extract_feriados, extract_val_amb, extract_resto
 from src.transform.ambulatorio import preparar, proyeccion_diaria, proyeccion_ejercicio, medidas
 from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio, load_resto, load_medidas
+from src.utils.connections import get_mstr_conn
 from src.utils.discord import notify_success, notify_error
 
 
 def run():
     """E→S→T→L completo (uso local)."""
-    stage_u6m(extract_u6m())
-    stage_resto(extract_resto())
+    conn = get_mstr_conn()
+    stage_u6m(extract_u6m(conn))
+    stage_resto(extract_resto(conn))
     _run_tl()
 
 
