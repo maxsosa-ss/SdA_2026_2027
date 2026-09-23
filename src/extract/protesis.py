@@ -4,8 +4,7 @@ from mstrio.project_objects import Report
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from src.utils.connections import get_mstr_conn
 
-_REPORT_PROT = 'C5DBD8592F4D6A3CED40B7848F9DFC0F'
-
+_REPORT_PROT = '487C19731D407E266563C5B41CC94F85'
 
 @retry(
     retry=retry_if_exception_type(requests.exceptions.ConnectionError),
