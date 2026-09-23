@@ -5,7 +5,7 @@ from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_t
 from src.utils.connections import get_mstr_conn
 from src.utils.gc_functions import leer_tabla_df
 
-_REPORT_DISCA = 'B60FDA19E4423A89A9B718BCC1952ECA'
+_REPORT_DISCA = '25F1CAF58F450831FC2C92BFC4B3A307'
 _SHEET_AUX    = '1l9dP8MK3GN8D1RymJ8Q8u-SRkrQPKmN-4wKChMBpYHQ'
 _RANGO_AUX    = 'discapacidad!A1:F75'
 
