@@ -32,6 +32,15 @@ def notify_info(title: str, fields: list[dict] | None = None) -> None:
     _post({'embeds': [embed]})
 
 
+def notify_warning(title: str, fields: list[dict] | None = None) -> None:
+    embed = {
+        'title': f':warning: {title}',
+        'color': 0xF39C12,
+        'fields': fields or [],
+    }
+    _post({'embeds': [embed]})
+
+
 def notify_error(title: str, exc: Exception) -> None:
     tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__)).strip()
     if not tb:

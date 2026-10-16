@@ -4,6 +4,7 @@ from src.transform.ambulatorio import preparar, proyeccion_diaria, proyeccion_ej
 from src.load.ambulatorio import load_proyeccion_diaria, load_proyeccion_ejercicio, load_resto, load_medidas
 from src.utils.connections import get_mstr_conn
 from src.utils.discord import notify_success, notify_error
+from src.utils.validacion import validar_zonas, validar_valores
 
 
 def run():
@@ -23,6 +24,11 @@ def _run_tl():
     resto   = stage_read_resto()
 
     df = preparar(df_raw)
+
+    validar_zonas(df, {'NE': ne_amb, 'VU': val_amb}, 'Ambulatorio')
+    validar_valores(
+        ne_amb, val_amb, ['Rubro', 'Subrubro', 'Zona DCA', 'Subzona DCA', 'Periodo'], 'VU', 'Ambulatorio', 'P_AMB'
+    )
 
     proyamb_dia = proyeccion_diaria(
         df,

@@ -9,6 +9,7 @@ from src.extract.ambulatorio import extract_feriados
 from src.transform.farmvac import preparar, proyeccion_diaria, proyeccion_ejercicio, proyeccion_importe, seg_proy_importe
 from src.load.farmvac import load_proyeccion_diaria, load_proyeccion_ejercicio, load_proyeccion_importe, load_seg_proy_importe
 from src.utils.discord import notify_success, notify_error
+from src.utils.validacion import validar_zonas
 
 
 def run():
@@ -26,7 +27,9 @@ def _run_tl():
 
     df = preparar(df_raw)
 
-    proy_dia    = proyeccion_diaria(df, cal['feriado'], cal['no_laborable'], cal['turistico'], ne_q)
+    validar_zonas(df, {'NE Q': ne_q, 'NE importe': ne_imp}, 'Farmvac')
+
+    proy_dia   = proyeccion_diaria(df, cal['feriado'], cal['no_laborable'], cal['turistico'], ne_q)
     proy_ej     = proyeccion_ejercicio(df, proy_dia, ne_q)
     proy_imp    = proyeccion_importe(df, proy_dia, ne_imp)
     seg_imp_dia = seg_proy_importe(df, proy_dia, ne_imp)
