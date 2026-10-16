@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 from mstrio.project_objects import Report
+from mstrio.project_objects.prompt import Prompt
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from src.utils.connections import get_mstr_conn
 from src.utils.gc_functions import leer_tabla_df
@@ -9,9 +10,11 @@ _REPORT_COMPLETE = '6FFDEA91D9424E4D3C903E800B8C8D52'
 _REPORT_U6M      = '1C7CE23E3342D3623628C6837F197F57'
 _REPORT_RESTO    = 'DCF6C6095B48C10091CCCCB2028F4767'
 
+_PROMPT_PERIODO_KEY = '1647EAE2AA414B24F49F3E82FB9EEC02@0@10'  # prompt "Valor de Periodo" de _REPORT_COMPLETE
+
 _SHEET_AUX      = '1l9dP8MK3GN8D1RymJ8Q8u-SRkrQPKmN-4wKChMBpYHQ'
 _SHEET_NE       = '1RV39I7zo0rSBgDhmGHjaEPt0eBnLfle1L0XpvLIHI9M'
-_SHEET_VAL_AMB  = '1sTDBzkvCmjJGOflB3-BafYWMgzWe0xFPcJmfquB8Nhw'
+_SHEET_VAL_AMB  = '16ZSzXeue8uQG1sDbJ1fP587WyMc470IV1SZSSbcOEMU'
 _SHEET_CONVERSOR = '1hc-Koy4z87doOled-5zLPSK9ysd1RNc7a9IbYL3ZpGQ'
 
 _VU_ID_COLS = ['RUBRO', 'SUBRUBRO', 'ZONA', 'SUBZONA']
@@ -30,6 +33,35 @@ def _fetch(report_id: str, conn) -> pd.DataFrame:
 def extract_complete(conn=None) -> pd.DataFrame:
     conn = conn or get_mstr_conn()
     return _fetch(_REPORT_COMPLETE, conn)
+
+
+def extract_complete_por_periodo(desde: str, hasta: str, conn=None) -> pd.DataFrame:
+    """
+    Base completa de Ambulatorio bajada periodo a periodo, respondiendo el prompt
+    'Valor de Periodo' del reporte completo (evita traer todo el historial de una sola vez).
+    desde / hasta: 'YYYYMM' inclusive.
+    """
+    conn = conn or get_mstr_conn()
+    periodos = pd.period_range(desde, hasta, freq='M').strftime('%Y%m')
+    partes = []
+    for periodo in periodos:
+        df = _fetch_periodo(periodo, conn)
+        print(f'⚙️ Ambulatorio {periodo}: {len(df)} registros')
+        partes.append(df)
+    return pd.concat(partes, ignore_index=True)
+
+
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.ConnectionError),
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(10),
+    reraise=True,
+)
+def _fetch_periodo(periodo: str, conn) -> pd.DataFrame:
+    report = Report(id=_REPORT_COMPLETE, connection=conn, progress_bar=False)
+    return report.to_dataframe(
+        prompt_answers=[Prompt(type='VALUE', key=_PROMPT_PERIODO_KEY, answers=periodo)]
+    )
 
 
 def extract_u6m(conn=None) -> pd.DataFrame:

@@ -1,3 +1,4 @@
+import re
 import socket
 
 import pandas as pd
@@ -63,7 +64,39 @@ def leer_tabla_df(spreadsheet_id, rango):
     except Exception as e:
         raise RuntimeError(f"Error leyendo GSheets ({rango}): {e}") from e
     
-# Función para escribir un DataFrame en Google Sheets    
+def _col_a_letra(n):
+    """1 -> 'A', 26 -> 'Z', 27 -> 'AA'."""
+    letra = ''
+    while n:
+        n, resto = divmod(n - 1, 26)
+        letra = chr(65 + resto) + letra
+    return letra
+
+
+def _letra_a_col(letra):
+    n = 0
+    for c in letra:
+        n = n * 26 + ord(c) - 64
+    return n
+
+
+def _rango_a_limpiar(rango, n_columnas):
+    """
+    Si `rango` es una sola celda de inicio (ej. 'Hoja!A1'), devuelve las columnas completas que
+    ocupa la tabla (ej. 'Hoja!A:K') para que clear_first borre también las filas sobrantes de una
+    escritura anterior más larga. Si ya es una hoja entera o un rango, lo devuelve tal cual.
+    """
+    if '!' not in rango or ':' in rango:
+        return rango
+    hoja, celda = rango.rsplit('!', 1)
+    m = re.fullmatch(r'([A-Za-z]+)\d+', celda)
+    if not m:
+        return rango
+    col_ini = _letra_a_col(m.group(1).upper())
+    return f"{hoja}!{_col_a_letra(col_ini)}:{_col_a_letra(col_ini + n_columnas - 1)}"
+
+
+# Función para escribir un DataFrame en Google Sheets
 def escribir_tabla_df(spreadsheet_id, rango, df, incluir_cabecera=True, clear_first=False):
     """
     Escribe un DataFrame de Pandas en un rango de Google Sheets.
@@ -85,7 +118,8 @@ def escribir_tabla_df(spreadsheet_id, rango, df, incluir_cabecera=True, clear_fi
         if clear_first:
             _execute(
                 _get_service().spreadsheets().values().clear(
-                    spreadsheetId=spreadsheet_id, range=rango
+                    spreadsheetId=spreadsheet_id,
+                    range=_rango_a_limpiar(rango, len(df_limpio.columns)),
                 )
             )
 
