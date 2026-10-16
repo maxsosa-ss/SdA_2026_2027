@@ -28,8 +28,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/protesis.parquet
-          key: protesis-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: protesis-parquet-
+          key: protesis-parquet-v2-${{ steps.vars.outputs.today }}
+          restore-keys: protesis-parquet-v2-
 
       - name: Restaurar SQLite acumulado
         uses: actions/cache@v4

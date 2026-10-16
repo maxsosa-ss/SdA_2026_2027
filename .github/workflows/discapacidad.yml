@@ -28,8 +28,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/discapacidad.parquet
-          key: discapacidad-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: discapacidad-parquet-
+          key: discapacidad-parquet-v2-${{ steps.vars.outputs.today }}
+          restore-keys: discapacidad-parquet-v2-
 
       - name: Restaurar SQLite acumulado
         uses: actions/cache@v4

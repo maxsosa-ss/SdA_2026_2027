@@ -28,8 +28,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw/farmvac.parquet
-          key: farmvac-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: farmvac-parquet-
+          key: farmvac-parquet-v2-${{ steps.vars.outputs.today }}
+          restore-keys: farmvac-parquet-v2-
 
       - name: Restaurar SQLite acumulado
         uses: actions/cache@v4

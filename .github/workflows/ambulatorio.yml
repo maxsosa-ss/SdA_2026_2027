@@ -30,8 +30,8 @@ jobs:
           path: |
             data/raw/ambulatorio.parquet
             data/raw/ambulatorio_resto.parquet
-          key: ambulatorio-parquet-${{ steps.vars.outputs.today }}
-          restore-keys: ambulatorio-parquet-
+          key: ambulatorio-parquet-v2-${{ steps.vars.outputs.today }}
+          restore-keys: ambulatorio-parquet-v2-
 
       - name: Restaurar SQLite acumulado
         uses: actions/cache@v4
