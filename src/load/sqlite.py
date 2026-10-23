@@ -27,7 +27,7 @@ def save_snapshot(df: pd.DataFrame, table_name: str, fecha_carga: pd.Timestamp =
 
     snapshot = df.copy()
     # Normalizar columnas datetime a string para compatibilidad con SQLite
-    for col in snapshot.select_dtypes(include='datetime64[ns]').columns:
+    for col in snapshot.select_dtypes(include=['datetime', 'datetimetz']).columns:
         snapshot[col] = snapshot[col].dt.strftime('%Y-%m-%d')
     snapshot.insert(0, 'fecha_carga', fecha_str)
 

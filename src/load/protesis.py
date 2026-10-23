@@ -13,7 +13,7 @@ def load_protesis_gral(df: pd.DataFrame) -> None:
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    for col in df.select_dtypes(include='datetime64[ns]').columns:
+    for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
         df[col] = df[col].dt.strftime('%Y-%m-%d')
     # Int64 (nullable) no acepta fillna('') en gc_functions → convertir a object
     for col in df.columns:

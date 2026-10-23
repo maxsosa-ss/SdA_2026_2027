@@ -52,7 +52,7 @@ def _load_consolidado(df: pd.DataFrame, rango: str, table_name: str) -> None:
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    for col in df.select_dtypes(include='datetime64[ns]').columns:
+    for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
         df[col] = df[col].dt.strftime('%Y-%m-%d')
     for col in df.columns:
         if str(df[col].dtype) == 'Int64':

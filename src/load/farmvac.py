@@ -26,7 +26,7 @@ def load_proyeccion_importe(df: pd.DataFrame) -> None:
 
 def load_seg_proy_importe(df: pd.DataFrame) -> None:
     nueva_fila = _prepare(df)
-    fecha_hoy = nueva_fila['Fecha'].iloc[0]
+    fecha_hoy = str(nueva_fila['Fecha'].iloc[0])
 
     historial = leer_tabla_df(_SHEET_OUTPUT, _RANGO_SEG_PROY_IMP)
 
@@ -48,6 +48,6 @@ def load_seg_proy_importe(df: pd.DataFrame) -> None:
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    for col in df.select_dtypes(include='datetime64[ns]').columns:
+    for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
         df[col] = df[col].dt.strftime('%Y-%m-%d')
     return df

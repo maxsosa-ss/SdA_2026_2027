@@ -39,6 +39,6 @@ def load_prov_drogueria(df: pd.DataFrame) -> None:
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    for col in df.select_dtypes(include='datetime64[ns]').columns:
+    for col in df.select_dtypes(include=['datetime', 'datetimetz']).columns:
         df[col] = df[col].dt.strftime('%Y-%m-%d')
     return df
