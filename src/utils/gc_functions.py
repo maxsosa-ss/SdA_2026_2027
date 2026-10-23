@@ -1,3 +1,4 @@
+import json
 import re
 import socket
 
@@ -114,6 +115,10 @@ def escribir_tabla_df(spreadsheet_id, rango, df, incluir_cabecera=True, clear_fi
         if incluir_cabecera:
             valores.append(df_limpio.columns.tolist())
         valores.extend(df_limpio.values.tolist())
+
+        # Validar que los valores se serializan ANTES de borrar: si falla
+        # después del clear, la hoja queda vacía y se pierde el historial.
+        json.dumps(valores)
 
         if clear_first:
             _execute(
