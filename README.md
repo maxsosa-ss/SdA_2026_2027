@@ -1,6 +1,6 @@
 # SdA — Seguimiento de Autorizaciones
 
-Pipeline diario de seguimiento de autorizaciones para una aseguradora de salud. Extrae datos crudos desde un Data Warehouse en **MicroStrategy**, calcula proyecciones diarias y de ejercicio frente a niveles esperados, y publica los resultados en **Google Sheets** y en una base **SQLite** local para consulta histórica.
+Pipeline diario de seguimiento de autorizaciones para una aseguradora de salud. Extrae datos crudos desde un Data Warehouse en **MicroStrategy**, calcula proyecciones diarias y de ejercicio frente a niveles esperados, y publica los resultados en **Google Sheets** en **cubos de MicroStrategy** y en una base **SQLite** local para consulta histórica.
 
 Los pipelines se disparan manualmente desde atajos de iPhone, que llaman a workflows de **GitHub Actions** vía `workflow_dispatch` / `repository_dispatch`.
 
@@ -17,7 +17,7 @@ Cada pipeline sigue siempre el mismo patrón de 4 etapas, una carpeta por etapa:
 | **E**xtract | `src/extract/` | Trae datos crudos desde MicroStrategy (`mstrio-py`) o tablas auxiliares de Google Sheets | Red |
 | **S**tage | `src/stage/` | Persiste/mergea lo extraído en parquet local, manteniendo los últimos 6 meses | `data/raw/*.parquet` |
 | **T**ransform | `src/transform/` | Calcula las proyecciones en memoria (pandas puro, sin I/O) | — |
-| **L**oad | `src/load/` | Escribe el resultado en Google Sheets y guarda un snapshot diario en SQLite | Red + `data/processed/sda.sqlite` |
+| **L**oad | `src/load/` | Escribe el resultado en Google Sheets, actualiza el cubo de MicroStrategy y guarda un snapshot diario en SQLite | Red + `data/processed/sda.sqlite` |
 
 `src/pipelines/<nombre>.py` orquesta las 4 etapas y notifica éxito/error a Discord.
 
@@ -36,13 +36,14 @@ flowchart LR
     RAW --> T[transform_*<br/>pandas puro]
     T --> L[load_*]
     L --> GS_out[Google Sheets<br/>resultados]
+    L --> CUBOS[Cubos MicroStrategy<br/>SdA - tabla]
     L --> SQLITE[(data/processed/sda.sqlite)]
     L --> DISCORD[Discord webhook<br/>éxito / error]
 ```
 
 ### Importante: la extracción (E) sólo es necesaria en local o al inicio del job de CI
 
-En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<nombre>.py`, que internamente corre sólo `_run_tl()` — **no toca MicroStrategy**. Las credenciales `MSTR_USER` / `MSTR_PASSWORD` sólo se necesitan en el paso E→S. Para uso local, la función `run()` de cada pipeline hace el ciclo completo E→S→T→L.
+En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<nombre>.py`, que internamente corre sólo `_run_tl()` — **no toca MicroStrategy**. Las credenciales `MSTR_USER` / `MSTR_PASSWORD` se necesitan en el paso E→S y también en T→L, porque `load_*` actualiza los cubos de MicroStrategy. Para uso local, la función `run()` de cada pipeline hace el ciclo completo E→S→T→L.
 
 ## Pipelines disponibles
 
@@ -50,8 +51,8 @@ En GitHub Actions, el paso T→L se ejecuta llamando a `python src/pipelines/<no
 |---|---|---|
 | `ambulatorio` | Reports Ambulatorio + Resto (MSTR) + NE_amb, feriados, val_amb (Sheets) | `amb_seg_diario`, `amb_general`, `amb_resto`, `amb_medidas` |
 | `farmvac` | Reports Farmacia + Vacunas (MSTR) + NE_farm (Sheets) | `farmvac_seg_diario`, `farmvac_gral_Q`, `farmvac_gral_imp`, `farm_proy_imp_diario` |
-| `discapacidad` | Report Discapacidad (MSTR) + tabla auxiliar de mapeo | `disca_gral` |
-| `protesis` | Report Prótesis (MSTR) | `protesis_gral` |
+| `discapacidad` | Report Discapacidad (MSTR) + tabla auxiliar de mapeo | `discapacidad` |
+| `protesis` | Report Prótesis (MSTR) | `protesis` |
 | `provision` | Reports Provisión + Provisión diario + NC Droguerías (MSTR) + NE_provision, NE_provisionNC (Sheets) | `prov_gral`, `prov_diario`, `NC`, `drogueria` |
 | `internaciones` | Reports Sanatorial + Quirúrgicas (MSTR) | `sanatorial`, `quirurgicas`, `consolidado_sanatorial`, `consolidado_quirurgicas` |
 | `check_dw` *(no es E→S→T→L)* | Tabla de control de procesos del DW + cubos de MicroStrategy (`fetch_cubos_info`) | — (notifica a Discord en **dos mensajes separados**: estado del DW y estado de cubos) |
@@ -82,6 +83,25 @@ flowchart TD
     Int -.error.-> Discord
 ```
 
+## Cubos de MicroStrategy
+
+Además de Sheets, cada tabla de salida se publica en un **super cube** de MicroStrategy (carpeta "Cubos SdA"), llamado `SdA - <table_name>`. Son 15 cubos, uno por tabla, menos las 3 acumulativas (`farm_proy_imp_diario`, `consolidado_sanatorial`, `consolidado_quirurgicas`), que no se suben.
+
+| Pipeline | Cubos (`table_name`) |
+|---|---|
+| `ambulatorio` | `amb_seg_diario`, `amb_general`, `amb_resto`, `amb_medidas` |
+| `farmvac` | `farm_seg_diario`, `farm_gral_q`, `farm_gral_imp` |
+| `discapacidad` | `discapacidad` |
+| `protesis` | `protesis` |
+| `provision` | `prov_gral`, `prov_diario` (sin `Proyección Importe`, igual que la hoja), `prov_nc`, `prov_drogueria` |
+| `internaciones` | `internaciones_sanatorial`, `internaciones_quirurgicas` |
+
+- **Cómo se suben:** cada `load_*` llama a `subir_tabla(df, table_name)` (`src/load/cubo.py`), que actualiza el cubo con política `replace`. Usa la librería [smpy](https://github.com/maxsosa-ss/strategic-management) (`dataframe_to_supercube`), instalada desde GitHub y fijada a un commit en `requirements.txt`.
+- **IDs:** `config/cubos.json` guarda `{table_name: cube_id}`. Se commitea, porque en Actions el archivo no se escribe de vuelta.
+- **Un fallo del cubo nunca frena el pipeline:** avisa con un warning a Discord y sigue. Las hojas y SQLite ya se escribieron antes.
+- **Tipos:** `_para_cubo` convierte todas las columnas numéricas a `float64`, `Periodo` a texto y las fechas a `datetime64[ns]`. Esto es importante: el cubo fija el tipo de cada métrica al crearse. Una métrica `integer` es de 32 bits, y actualizarla con importes mayores (o con otro tipo) la deja **nula sin dar error**. Con `float64` la métrica es siempre `double`. Si hay que cambiar el tipo de una métrica, hay que borrar y recrear el cubo.
+- **Crear cubos nuevos (sólo local):** con `CREAR_CUBOS=1`, `subir_tabla` crea el cubo de una tabla que no esté en `cubos.json` y guarda su ID; después hay que commitear el archivo. En Actions nunca se crea nada (cada corrida crearía un duplicado) y un cubo sin ID registrado sólo genera un warning.
+
 ## Estructura del repositorio
 
 ```
@@ -89,9 +109,11 @@ src/
   extract/      # pull desde MicroStrategy o Google Sheets
   stage/        # merge en parquet local (data/raw/*.parquet), retiene 6 meses
   transform/    # cálculo de proyecciones, pandas puro, sin I/O
-  load/         # escritura a Google Sheets + snapshot en SQLite
+  load/         # escritura a Google Sheets + cubos de MicroStrategy (cubo.py) + snapshot en SQLite
   pipelines/    # orquestación E→S→T→L + notificaciones Discord
   utils/        # conexiones (MSTR/Google), fechas, Discord, helpers de Sheets, mapeos
+config/
+  cubos.json    # {table_name: cube_id} de los cubos de MicroStrategy (se commitea)
 scripts/
   check_dw.py   # chequea última actualización de procesos del DW
 data/
@@ -119,6 +141,8 @@ DISCORD_WEBHOOK_URL=...   # opcional en local
 
 Credenciales de Google: archivo `credentials.json` (service account) en la raíz del repo.
 
+La librería `smpy` (cubos) se instala con el resto desde `requirements.txt`; el repo `maxsosa-ss/strategic-management` tiene que ser accesible (hoy es público).
+
 ### 2. Ejecutar un pipeline completo (E→S→T→L)
 
 ```bash
@@ -126,6 +150,14 @@ PYTHONPATH=. python -c "from src.pipelines.ambulatorio import run; run()"
 ```
 
 O abrir `main.ipynb`, que tiene una celda por pipeline llamando a `run()`.
+
+> **Cuidado al probar en local:** `run()` hace E→S→T→L y **escribe en las hojas y en los cubos de producción**. Correr sólo T→L (`python src/pipelines/<nombre>.py`) usa los parquets de `data/raw/`, que en local pueden estar desactualizados, y publicaría datos viejos. Para probar sin tocar las hojas, usar `SOLO_CUBOS=1` (`escribir_tabla_df` no escribe nada, pero los cubos y SQLite sí se actualizan) y refrescar los datos con `run()`:
+>
+> ```bash
+> SOLO_CUBOS=1 PYTHONPATH=. python -c "from src.pipelines.ambulatorio import run; run()"
+> ```
+>
+> Los parquets de `data/raw/` están versionados: después de una prueba local, restaurarlos con `git checkout -- data/raw` para que no entren a un commit.
 
 ### 3. Ejecutar sólo una etapa
 
@@ -170,7 +202,7 @@ Cada job de pipeline:
 2. Restaura el cache acumulado de `data/processed/sda.sqlite`.
 3. Escribe `credentials.json` desde el secret `GOOGLE_CREDENTIALS`.
 4. Corre el extract+stage (E→S) usando `MSTR_USER` / `MSTR_PASSWORD`.
-5. Corre `python src/pipelines/<nombre>.py` (T→L), que escribe a Sheets/SQLite y notifica éxito por Discord. Al terminar el job, el cache guarda el `sda.sqlite` actualizado.
+5. Corre `python src/pipelines/<nombre>.py` (T→L), que escribe a Sheets, actualiza los cubos de MicroStrategy (con `MSTR_USER` / `MSTR_PASSWORD`) y SQLite, y notifica éxito por Discord. Al terminar el job, el cache guarda el `sda.sqlite` actualizado.
 6. Si falla cualquier paso, notifica el error a Discord con un link al run.
 
 `backup.yml` no corre ninguno de estos pasos: solo restaura el cache de `sda.sqlite` y lo sube como artifact. Conviene dispararlo al final de la secuencia diaria de pipelines para tener un respaldo descargable del historial acumulado.
@@ -179,7 +211,7 @@ Cada job de pipeline:
 
 | Secret | Uso |
 |---|---|
-| `MSTR_USER` / `MSTR_PASSWORD` | Login a MicroStrategy (sólo en el paso E→S) |
+| `MSTR_USER` / `MSTR_PASSWORD` | Login a MicroStrategy (paso E→S y actualización de cubos en T→L) |
 | `GOOGLE_CREDENTIALS` | JSON completo de la service account de Google |
 | `DISCORD_WEBHOOK_URL` | Notificaciones de éxito/error |
 
