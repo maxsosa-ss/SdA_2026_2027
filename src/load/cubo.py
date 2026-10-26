@@ -11,7 +11,6 @@ from src.utils.discord import notify_warning
 _CUBOS_JSON = Path(__file__).parents[2] / 'config' / 'cubos.json'
 _FOLDER_CUBOS = '2C35209C1F4DEA269AFEBA80EBEACF1E'  # carpeta "Cubos SdA"
 _PREFIJO_NOMBRE = 'SdA - '
-_INT32_MAX = 2**31 - 1
 
 
 def subir_a_cubo(
@@ -71,17 +70,22 @@ def _guardar_id(table_name: str, cube_id: str) -> None:
 
 def _para_cubo(df: pd.DataFrame) -> pd.DataFrame:
     """
-    mstrio no soporta los tipos nullable de pandas (Int64, Float64, boolean). Los enteros sin
-    nulos pasan a su tipo numpy; con nulos pasan a float64 (NaN), que el cubo carga como métrica
-    con valores vacíos.
+    Normaliza los tipos antes de subir al cubo.
+
+    - Todas las columnas numéricas (int, Int64, float...) pasan a float64. El cubo fija el tipo de
+      cada métrica al crearse y no lo cambia: una métrica `integer` es de 32 bits, y actualizarla
+      con valores que no caben (importes en $) o con otro tipo la deja NULA sin dar error.
+      Con float64 la métrica es siempre `double`.
+    - `Periodo` ('YYYYMM') va como texto, para que sea atributo y no métrica.
+    - Las fechas pasan a datetime64[ns], la única resolución que acepta mstrio.
     """
     df = df.copy()
     for col in df.columns:
-        dtype = df[col].dtype
-        if pd.api.types.is_extension_array_dtype(dtype) and pd.api.types.is_numeric_dtype(dtype):
-            df[col] = df[col].astype('float64') if df[col].isna().any() else df[col].astype(dtype.numpy_dtype)
-        # El cubo guarda los enteros en 32 bits: un int64 mayor queda NULO sin avisar (importes en $).
-        if pd.api.types.is_integer_dtype(df[col].dtype) and df[col].abs().max() > _INT32_MAX:
+        if col == 'Periodo':
+            df[col] = df[col].astype(str)
+        elif pd.api.types.is_datetime64_any_dtype(df[col].dtype):
+            df[col] = df[col].astype('datetime64[ns]')  # mstrio no acepta otras resoluciones (ej. [us])
+        elif pd.api.types.is_numeric_dtype(df[col].dtype) and not pd.api.types.is_bool_dtype(df[col].dtype):
             df[col] = df[col].astype('float64')
     return df
 

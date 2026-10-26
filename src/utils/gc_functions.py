@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import socket
 
@@ -109,6 +110,11 @@ def escribir_tabla_df(spreadsheet_id, rango, df, incluir_cabecera=True, clear_fi
     :param clear_first: bool - Si es True, borra el contenido del rango antes de escribir.
     :return: bool - True si se escribió con éxito, False en caso contrario.
     """
+    # Para probar cubos/SQLite en local sin tocar las hojas de producción (SOLO_CUBOS=1).
+    if os.getenv('SOLO_CUBOS') == '1':
+        print(f"[escribir_tabla_df] SOLO_CUBOS=1: no se escribe en GSheets ({rango})")
+        return True
+
     try:
         df_limpio = df.fillna('')
         valores = []
