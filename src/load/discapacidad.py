@@ -1,6 +1,7 @@
 import pandas as pd
 from src.utils.gc_functions import escribir_tabla_df
 from src.load.sqlite import save_snapshot
+from src.load.cubo import subir_tabla
 
 _SHEET_OUTPUT = '12Em-k3tmAlhWLYjW1d62J8a8x3o63lYFFQvZ4f9KTIM'
 _RANGO_GRAL   = 'discapacidad!A1'
@@ -9,6 +10,7 @@ _RANGO_GRAL   = 'discapacidad!A1'
 def load_disca_gral(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_GRAL, _prepare(df), clear_first=True)
     save_snapshot(df, 'discapacidad')
+    subir_tabla(df, 'discapacidad')
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:

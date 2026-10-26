@@ -1,6 +1,7 @@
 import pandas as pd
 from src.utils.gc_functions import escribir_tabla_df, leer_tabla_df
 from src.load.sqlite import save_snapshot
+from src.load.cubo import subir_tabla
 
 _SHEET_OUTPUT     = '10R2K2tOtMjVDaModPg4cEVoDnundpysvDhhq1itFHI0'
 _RANGO_SAN        = 'sanatorial!A1'
@@ -12,11 +13,13 @@ _RANGO_CONS_QUIR  = 'consolidado_quirurgicas'
 def load_sanatorial(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_SAN, _prepare(df), clear_first=True)
     save_snapshot(df, 'internaciones_sanatorial')
+    subir_tabla(df, 'internaciones_sanatorial')
 
 
 def load_quirurgicas(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_QUIR, _prepare(df), clear_first=True)
     save_snapshot(df, 'internaciones_quirurgicas')
+    subir_tabla(df, 'internaciones_quirurgicas')
 
 
 def load_consolidado_sanatorial(df: pd.DataFrame) -> None:

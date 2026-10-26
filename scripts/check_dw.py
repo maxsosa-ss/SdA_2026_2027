@@ -1,6 +1,7 @@
 import pandas as pd
 from mstrio.api import cubes
 from mstrio.project_objects import Report
+from smpy.transforms.filters import filter_values
 from src.utils.connections import get_mstr_conn
 from src.utils.discord import notify_info
 
@@ -16,7 +17,7 @@ CUBOS_INTERES = [
 def fetch_tabla_control(conn) -> pd.DataFrame:
     df = Report(id=REPORT_ID, connection=conn, progress_bar=False).to_dataframe()
 
-    df = df[df['Nombre de Proceso@ID'].isin(IDS_INTERES)]
+    df = filter_values(df, include={'Nombre de Proceso@ID': IDS_INTERES}, strict=False)
     return (
         df[['Nombre de Proceso@DESC', 'Ultima Fecha Actualización de Proceso']]
         .rename(columns={

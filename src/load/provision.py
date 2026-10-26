@@ -1,6 +1,7 @@
 import pandas as pd
 from src.utils.gc_functions import escribir_tabla_df
 from src.load.sqlite import save_snapshot
+from src.load.cubo import subir_tabla
 
 _SHEET_OUTPUT  = '1p7bvTZtdYbDwh4YYiLbE1knIicBlU6VeWmq1pX2YNiA'
 # Rangos deliberadamente más anchos que las columnas que efectivamente
@@ -16,6 +17,7 @@ _RANGO_DROGUERIA = 'drogueria!A1:Z1000'
 def load_prov_gral(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_GRAL, _prepare(df), clear_first=True)
     save_snapshot(df, 'prov_gral')
+    subir_tabla(df, 'prov_gral')
 
 
 def load_prov_diario(df: pd.DataFrame) -> None:
@@ -25,16 +27,19 @@ def load_prov_diario(df: pd.DataFrame) -> None:
     df_sheet = df.drop(columns=['Proyección Importe'])
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_DIARIO, _prepare(df_sheet), clear_first=True)
     save_snapshot(df, 'prov_diario')
+    subir_tabla(df_sheet, 'prov_diario')
 
 
 def load_prov_nc(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_NC, _prepare(df), clear_first=True)
     save_snapshot(df, 'prov_nc')
+    subir_tabla(df, 'prov_nc')
 
 
 def load_prov_drogueria(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_DROGUERIA, _prepare(df), clear_first=True)
     save_snapshot(df, 'prov_drogueria')
+    subir_tabla(df, 'prov_drogueria')
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:

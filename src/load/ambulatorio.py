@@ -1,6 +1,7 @@
 import pandas as pd
 from src.utils.gc_functions import escribir_tabla_df
 from src.load.sqlite import save_snapshot
+from src.load.cubo import subir_tabla
 
 _SHEET_PROYECCION_DIARIA    = '1x0vover_16Q-XQZfJgeGBkfpi_R44PVO7y2x7U8Kz1Y'
 _SHEET_PROYECCION_EJERCICIO = '1x0vover_16Q-XQZfJgeGBkfpi_R44PVO7y2x7U8Kz1Y'
@@ -16,21 +17,25 @@ _RANGO_MEDIDAS              = 'amb_medidas!A1'
 def load_proyeccion_diaria(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_PROYECCION_DIARIA, _RANGO_PROYECCION_DIARIA, _prepare(df), clear_first=True)
     save_snapshot(df, 'amb_seg_diario')
+    subir_tabla(df, 'amb_seg_diario')
 
 
 def load_proyeccion_ejercicio(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_PROYECCION_EJERCICIO, _RANGO_PROYECCION_EJERCICIO, _prepare(df), clear_first=True)
     save_snapshot(df, 'amb_general')
+    subir_tabla(df, 'amb_general')
 
 
 def load_resto(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_RESTO, _RANGO_RESTO, _prepare(df), clear_first=True)
     save_snapshot(df, 'amb_resto')
+    subir_tabla(df, 'amb_resto')
 
 
 def load_medidas(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_MEDIDAS, _RANGO_MEDIDAS, _prepare(df), clear_first=True)
     save_snapshot(df, 'amb_medidas')
+    subir_tabla(df, 'amb_medidas')
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:

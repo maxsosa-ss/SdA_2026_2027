@@ -1,6 +1,7 @@
 import pandas as pd
 from src.utils.gc_functions import escribir_tabla_df
 from src.load.sqlite import save_snapshot
+from src.load.cubo import subir_tabla
 
 _SHEET_OUTPUT = '1im5bWXvib9uVRGQ5GRFre2gy2S-Jaq9ThPL5lxraYMM'
 _RANGO_GRAL   = 'protesis!A1'
@@ -9,6 +10,7 @@ _RANGO_GRAL   = 'protesis!A1'
 def load_protesis_gral(df: pd.DataFrame) -> None:
     escribir_tabla_df(_SHEET_OUTPUT, _RANGO_GRAL, _prepare(df), clear_first=True)
     save_snapshot(df, 'protesis')
+    subir_tabla(df, 'protesis')
 
 
 def _prepare(df: pd.DataFrame) -> pd.DataFrame:

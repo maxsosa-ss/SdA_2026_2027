@@ -7,3 +7,4 @@ requests>=2.0
 python-dotenv>=1.0
 mstrio-py
 tenacity>=8.0
+smpy[mstr] @ git+https://github.com/maxsosa-ss/strategic-management.git@adb5747fcd734b94de3bfce1df1daff255bb921a

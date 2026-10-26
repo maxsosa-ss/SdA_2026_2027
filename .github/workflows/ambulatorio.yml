@@ -60,6 +60,8 @@ jobs:
       - name: Ejecutar pipeline (T -> L)
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          MSTR_USER:           ${{ secrets.MSTR_USER }}
+          MSTR_PASSWORD:       ${{ secrets.MSTR_PASSWORD }}
         run: PYTHONPATH=. python src/pipelines/ambulatorio.py
 
       - name: Notificar error en Discord
