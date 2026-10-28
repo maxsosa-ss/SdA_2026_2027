@@ -1,13 +1,16 @@
 import pandas as pd
 import requests
 from mstrio.project_objects import Report
+from mstrio.project_objects.prompt import Prompt
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 from src.utils.connections import get_mstr_conn
+from src.utils.dates import p_actual
 from src.utils.gc_functions import leer_tabla_df
 
 _REPORT_PROVISION        = 'C41EA844C04CDA01937C65A9DB6E3E86'
 _REPORT_PROVISION_DIARIO = 'B9025BF74B447CED830040BECF1F02DE'
 _REPORT_NC               = '375A58A94D45054EBD97B8AC17F1206F'
+_PROMPT_PERIODO_DIARIO_KEY = '5C4C1DB7124A1CA31C9CA69048527B3F@0@10'  # prompt "Valor de Periodo" de _REPORT_PROVISION_DIARIO
 
 _SHEET_NE = '1RV39I7zo0rSBgDhmGHjaEPt0eBnLfle1L0XpvLIHI9M'
 _RANGO_NE = 'NE_provision!A1:D127'
@@ -42,9 +45,22 @@ def extract_provision(conn=None) -> pd.DataFrame:
     return df
 
 
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.ConnectionError),
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(10),
+    reraise=True,
+)
+def _fetch_periodo(report_id: str, prompt_key: str, periodo: str, conn) -> pd.DataFrame:
+    report = Report(id=report_id, connection=conn, progress_bar=False)
+    return report.to_dataframe(
+        prompt_answers=[Prompt(type='VALUE', key=prompt_key, answers=periodo)]
+    )
+
+
 def extract_provision_diario(conn=None) -> pd.DataFrame:
     conn = conn or get_mstr_conn()
-    df = _fetch(_REPORT_PROVISION_DIARIO, conn)
+    df = _fetch_periodo(_REPORT_PROVISION_DIARIO, _PROMPT_PERIODO_DIARIO_KEY, p_actual, conn)
     df.rename(columns={
         'Fecha Proceso Autorización':      'Fecha',
         'Importe Comprobante Prestacion':  'Autorizaciones $',
